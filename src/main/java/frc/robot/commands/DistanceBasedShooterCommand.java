@@ -10,7 +10,7 @@ import frc.robot.subsystems.VisionSubsystem;
 
 /**
  * ============================================================================
- * DISTANCE-BASED DUMPER COMMAND - WCP Big Dumper 2026 REBUILT
+ * DISTANCE-BASED DUMPER COMMAND - Snapstrike 2026 REBUILT
  * ============================================================================
  * FRC 2026 REBUILT sahasinda Hub'a fuel skorlamak icin:
  * 

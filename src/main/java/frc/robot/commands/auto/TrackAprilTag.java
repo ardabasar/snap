@@ -48,26 +48,30 @@ public class TrackAprilTag extends Command {
     //       Boylece distanceMode mantigi net ve guvenli
     private final boolean rotationOnly;
 
-    // PID ayarlari
-    private static final double ROT_KP  = 0.035;
+    // PID ayarlari - DUSUK tutuldu ("tekerlek kudurma" onlendi)
+    // Agresif PID degerleri tekerleklerin aniden hareket etmesine neden olur.
+    // Dusuk P + dusuk D = yavas ama kontrollü hareket.
+    private static final double ROT_KP  = 0.025;
     private static final double ROT_KI  = 0.0;
-    private static final double ROT_KD  = 0.003;
+    private static final double ROT_KD  = 0.002;
 
-    private static final double DIST_KP = 0.8;
+    private static final double DIST_KP = 0.5;
     private static final double DIST_KI = 0.0;
-    private static final double DIST_KD = 0.05;
+    private static final double DIST_KD = 0.03;
 
-    private static final double ROT_DEADBAND_DEG = 1.0;
-    private static final double DIST_DEADBAND_M  = 0.06;
+    // Deadband'lar YUKSEK -> kucuk titremeler yok sayilir
+    private static final double ROT_DEADBAND_DEG = 1.5;
+    private static final double DIST_DEADBAND_M  = 0.08;
 
-    private static final double MIN_ROT_OUTPUT  = 0.05;
-    private static final double MIN_DIST_OUTPUT = 0.05;
+    private static final double MIN_ROT_OUTPUT  = 0.04;
+    private static final double MIN_DIST_OUTPUT = 0.04;
 
     private final double xScale;
     private final double rotScale;
 
-    private static final double MAX_X_ACCEL   = 1.2;
-    private static final double MAX_ROT_ACCEL = 3.5;
+    // Rate limiter - YAVAS ivme (ani hiz degisimi engellenir)
+    private static final double MAX_X_ACCEL   = 0.8;
+    private static final double MAX_ROT_ACCEL = 2.5;
 
     // [FIX] SmartDashboard throttle
     private static final int DASHBOARD_INTERVAL = 10;
