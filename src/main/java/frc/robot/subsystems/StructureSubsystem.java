@@ -5,6 +5,7 @@ import com.ctre.phoenix6.controls.DutyCycleOut;
 import com.ctre.phoenix6.controls.Follower;
 import com.ctre.phoenix6.configs.TalonFXConfiguration;
 import com.ctre.phoenix6.signals.NeutralModeValue;
+import com.ctre.phoenix6.signals.MotorAlignmentValue;
 import com.ctre.phoenix6.StatusSignal;
 
 import edu.wpi.first.units.measure.Angle;
@@ -48,8 +49,8 @@ public class StructureSubsystem extends SubsystemBase {
     /** Stator akim limiti (Amper) */
     private static final double STATOR_CURRENT_LIMIT = 40.0;
 
-    /** Follower motor yonunu ters cevir? */
-    private static final boolean FOLLOWER_OPPOSE_LEADER = false;
+    /** Follower motor hizalamasi (Aligned = leader ile ayni yon) */
+    private static final MotorAlignmentValue FOLLOWER_ALIGNMENT = MotorAlignmentValue.Aligned;
 
     // ========================================================================
     // DONANIM
@@ -85,7 +86,7 @@ public class StructureSubsystem extends SubsystemBase {
         configureMotors();
 
         // Follower, leader'i takip etsin
-        followerMotor.setControl(new Follower(LEADER_CAN_ID, FOLLOWER_OPPOSE_LEADER));
+        followerMotor.setControl(new Follower(LEADER_CAN_ID, FOLLOWER_ALIGNMENT));
 
         // Telemetri sinyalleri (sadece leader'dan)
         positionSignal = leaderMotor.getRotorPosition();
