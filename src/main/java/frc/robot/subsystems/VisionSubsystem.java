@@ -30,6 +30,11 @@ import frc.robot.LimelightHelpers.PoseEstimate;
  * Toplam AprilTag: 32 adet
  * Koordinat Sistemi: Blue alliance duvarinin sag alt kosesi origin (WPILib NWU)
  *
+ * ONEMLI: Vision varsayilan olarak ACIK baslar!
+ * Robot acilir acilmaz (disabled modda bile) AprilTag tarayarak
+ * gercek konumunu tespit eder. x=0 y=0'dan baslamaz.
+ * Bu sayede teleop veya otonom basladiginda robot zaten konumunu bilir.
+ *
  * Dashboard Verileri (sadece gerekli olanlar):
  *   - Robot Pozisyonu: X, Y, Heading
  *   - Hub Mesafesi: Alliance Hub'ina olan mesafe
@@ -47,7 +52,8 @@ public class VisionSubsystem extends SubsystemBase {
     private final CommandSwerveDrivetrain drivetrain;
     private final String limelightName;
 
-    private boolean enabled = false;
+    /** Vision varsayilan olarak ACIK baslar - robot nerede oldugunu HEMEN bilsin */
+    private boolean enabled = true;
 
     // ========================================================================
     // GUVENLIK FILTRELERI

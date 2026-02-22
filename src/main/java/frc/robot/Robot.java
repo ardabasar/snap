@@ -6,7 +6,6 @@ package frc.robot;
 
 import com.ctre.phoenix6.HootAutoReplay;
 
-import edu.wpi.first.math.util.Units;
 import edu.wpi.first.wpilibj.TimedRobot;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.CommandScheduler;
@@ -53,7 +52,11 @@ public class Robot extends TimedRobot {
         .withTimestampReplay()
         .withJoystickReplay();
 
-    private final boolean kUseLimelight = false;
+    /**
+     * Vision lokalizasyonu VisionSubsystem tarafindan yonetilir.
+     * Robot acilir acilmaz (disabled dahil) konum aramaya baslar.
+     * Ayrica teleopInit ve autonomousInit'te seed yapilir.
+     */
 
     public Robot() {
         m_robotContainer = new RobotContainer();
@@ -63,18 +66,9 @@ public class Robot extends TimedRobot {
     public void robotPeriodic() {
         m_timeAndJoystickReplay.update();
         CommandScheduler.getInstance().run();
-
-        if (kUseLimelight) {
-            var driveState = m_robotContainer.drivetrain.getState();
-            double headingDeg = driveState.Pose.getRotation().getDegrees();
-            double omegaRps = Units.radiansToRotations(driveState.Speeds.omegaRadiansPerSecond);
-
-            LimelightHelpers.SetRobotOrientation("limelight", headingDeg, 0, 0, 0, 0, 0);
-            var llMeasurement = LimelightHelpers.getBotPoseEstimate_wpiBlue_MegaTag2("limelight");
-            if (llMeasurement != null && llMeasurement.tagCount > 0 && Math.abs(omegaRps) < 2.0) {
-                m_robotContainer.drivetrain.addVisionMeasurement(llMeasurement.pose, llMeasurement.timestampSeconds);
-            }
-        }
+        // Vision fuzyonu artik VisionSubsystem.periodic() icinde yapiliyor.
+        // VisionSubsystem varsayilan olarak ACIK basliyor, robot nerede
+        // oldugunu hemen bilir.
     }
 
     @Override
@@ -120,6 +114,19 @@ public class Robot extends TimedRobot {
         // Otonom'dan kalan her seyi temizle
         CommandScheduler.getInstance().cancelAll();
         m_autonomousCommand = null;
+
+        // Teleop baslarken de vision ile konum dogrula
+        // VisionSubsystem zaten acik, ama bir kez daha seed komutu calistir
+        // (eger otonom oncesi seed yapilmadiysa veya robot yeni acildiysa)
+        if (!m_robotContainer.drivetrain.isVisionSeeded()) {
+            CommandScheduler.getInstance().schedule(
+                new frc.robot.commands.auto.VisionAutoSeedCommand(
+                    m_robotContainer.drivetrain,
+                    m_robotContainer.getVision(),
+                    "limelight"
+                )
+            );
+        }
     }
 
     @Override

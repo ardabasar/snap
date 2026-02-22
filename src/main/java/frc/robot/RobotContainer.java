@@ -182,12 +182,13 @@ public class RobotContainer {
      *    LT              -> Surekli AprilTag takibi (basili tut)
      *
      *  D-PAD:
-     *    D-Pad Up        -> Vision ON
-     *    D-Pad Down      -> Vision OFF
+     *    (bos - gelecek mekanizmalar icin)
      *
      *  MENU:
      *    Start           -> (bos)
      *    Back            -> (bos)
+     *
+     *  VISION: HER ZAMAN ACIK - robot acilir acilmaz konum tespit eder
      *
      * ========================================================================
      */
@@ -260,14 +261,9 @@ public class RobotContainer {
         joystick.leftBumper().onTrue(drivetrain.runOnce(drivetrain::seedFieldCentric));
 
         // ==================================================================
-        // D-PAD UP -> Vision ON
+        // D-PAD -> Bos (Vision artik HER ZAMAN ACIK, toggle yok)
+        // Gelecekte baska mekanizma eklenebilir.
         // ==================================================================
-        joystick.povUp().onTrue(Commands.runOnce(() -> vision.setEnabled(true)));
-
-        // ==================================================================
-        // D-PAD DOWN -> Vision OFF
-        // ==================================================================
-        joystick.povDown().onTrue(Commands.runOnce(() -> vision.setEnabled(false)));
 
         // ==================================================================
         // TELEMETRI
