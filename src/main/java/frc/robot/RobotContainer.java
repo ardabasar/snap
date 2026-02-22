@@ -9,7 +9,6 @@ import com.pathplanner.lib.auto.AutoBuilder;
 import com.pathplanner.lib.auto.NamedCommands;
 import com.pathplanner.lib.commands.FollowPathCommand;
 
-import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
@@ -19,7 +18,6 @@ import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
 import edu.wpi.first.wpilibj2.command.button.RobotModeTriggers;
 
 import frc.robot.commands.AlignToAprilTag;
-import frc.robot.commands.AlignToFrontOfTag;
 import frc.robot.commands.PrepareShotCommand;
 import frc.robot.commands.auto.AutoAlignToTagCommand;
 import frc.robot.commands.auto.TrackAprilTag;
@@ -61,6 +59,10 @@ import frc.robot.subsystems.VisionSubsystem;
  *     Feeder:           16
  *   PWM:
  *     Hood servolar:    3 (sol), 4 (sag)
+ *
+ * NOT: Feeder ayri buton degildir!
+ * RT'ye basinca Shooter + Hood + Feeder birlikte calisir.
+ * Buton birakilinca hepsi durur, hood servolari sifira doner.
  * ============================================================================
  */
 public class RobotContainer {
@@ -77,11 +79,6 @@ public class RobotContainer {
     private final SwerveRequest.FieldCentric drive = new SwerveRequest.FieldCentric()
             .withDeadband(MaxSpeed * 0.1)
             .withRotationalDeadband(MaxAngularRate * 0.1)
-            .withDriveRequestType(DriveRequestType.OpenLoopVoltage);
-
-    private final SwerveRequest.SwerveDriveBrake brake = new SwerveRequest.SwerveDriveBrake();
-    private final SwerveRequest.PointWheelsAt point = new SwerveRequest.PointWheelsAt();
-    private final SwerveRequest.RobotCentric forwardStraight = new SwerveRequest.RobotCentric()
             .withDriveRequestType(DriveRequestType.OpenLoopVoltage);
 
     private final Telemetry logger = new Telemetry(MaxSpeed);
@@ -122,9 +119,9 @@ public class RobotContainer {
     // NAMED COMMANDS (PathPlanner Otonom icin)
     // ========================================================================
     private void registerNamedCommands() {
-        // Shooter: Mesafe bazli atisa hazirla (shooter + hood birlikte)
+        // Shooter: Mesafe bazli atisa hazirla (shooter + hood + feeder birlikte)
         NamedCommands.registerCommand("prepareShot",
-            new PrepareShotCommand(shooter, hood, vision, "limelight").withTimeout(3.0));
+            new PrepareShotCommand(shooter, hood, feeder, vision, "limelight").withTimeout(3.0));
 
         // Feeder: Toplari shooter'a besle
         NamedCommands.registerCommand("feed",
@@ -161,29 +158,33 @@ public class RobotContainer {
 
     /*
      * ========================================================================
-     * LOGITECH F310 / XBOX CONTROLLER BUTON HARITASI (XInput modu)
+     * XBOX CONTROLLER BUTON HARITASI
      * ========================================================================
      *
-     *   A buton  -> Mesafe bazli atis (Shooter + Hood: Limelight mesafe -> RPM + aci)
-     *   B buton  -> Tekerlekleri yone cevir (swerve debug)
-     *   X buton  -> Feeder ileri (toplari shooter'a besle)
-     *   Y buton  -> Feeder geri (top cikarma)
+     *  STICKS:
+     *    Sol Stick       -> Swerve surme (field-centric X/Y)
+     *    Sag Stick X     -> Donus (rotation)
      *
-     *   LB       -> Field-centric sifirla (heading reset)
-     *   RB       -> AprilTag donus hizalama
-     *   RT       -> AprilTag yaklasip hizalama (1m mesafe)
-     *   LT       -> Surekli AprilTag takibi
+     *  FACE BUTONLARI:
+     *    A (alt)         -> Elevator asagi (0.25 hiz, basili tut)
+     *    B (sag)         -> Structure ileri - toplari besle (basili tut)
+     *    X (sol)         -> Structure geri (basili tut)
+     *    Y (ust)         -> Elevator yukari (0.25 hiz, basili tut)
      *
-     *   Sol Stick -> Swerve surme (field-centric X/Y)
-     *   Sag Stick X -> Donus (rotation)
+     *  BUMPER / TRIGGER:
+     *    LB              -> Field-centric sifirla (heading reset)
+     *    RB              -> AprilTag donus hizalama (basili tut)
+     *    RT              -> ATIS! Shooter + Hood + Feeder birlikte
+     *                       (Limelight mesafe -> RPM + aci, feeder otomatik)
+     *    LT              -> Surekli AprilTag takibi (basili tut)
      *
-     *   POV Up    -> Elevator yukari (0.25 hiz)
-     *   POV Down  -> Elevator asagi (0.25 hiz)
-     *   POV Right -> Structure ileri (toplari besle)
-     *   POV Left  -> Structure geri
+     *  D-PAD:
+     *    D-Pad Up        -> Vision ON
+     *    D-Pad Down      -> Vision OFF
      *
-     *   Start buton -> Vision ON
-     *   Back buton  -> Vision OFF
+     *  MENU:
+     *    Start           -> (bos)
+     *    Back            -> (bos)
      *
      * ========================================================================
      */
@@ -191,6 +192,8 @@ public class RobotContainer {
 
         // ==================================================================
         // SWERVE SURME (varsayilan komut)
+        // Sol stick X/Y -> field-centric hareket
+        // Sag stick X   -> donus
         // ==================================================================
         drivetrain.setDefaultCommand(
             drivetrain.applyRequest(() -> drive
@@ -202,47 +205,48 @@ public class RobotContainer {
             drivetrain.applyRequest(() -> new SwerveRequest.Idle()).ignoringDisable(true));
 
         // ==================================================================
-        // A BUTON -> Mesafe bazli atis (Shooter + Hood birlikte)
-        // Limelight ile mesafe olcup RPM + hood acisi interpolasyonla belirlenir
+        // RT (Sag Trigger) -> ATIS KOMUTU
+        // Shooter + Hood + Feeder birlikte calisir:
+        //   - Limelight ile hub mesafesi olculur
+        //   - Mesafeye gore RPM + hood acisi enterpolasyonla belirlenir
+        //   - Feeder otomatik olarak 0.25 hizda toplari shooter'a besler
+        //   - Buton birakilinca hepsi durur, hood sifira doner
         // ==================================================================
-        joystick.a().whileTrue(
-            new PrepareShotCommand(shooter, hood, vision, "limelight"));
+        joystick.rightTrigger(0.5).whileTrue(
+            new PrepareShotCommand(shooter, hood, feeder, vision, "limelight"));
 
         // ==================================================================
-        // B BUTON -> Tekerlekleri yone cevir (swerve debug)
-        // ==================================================================
-        joystick.b().whileTrue(drivetrain.applyRequest(
-            () -> point.withModuleDirection(
-                new Rotation2d(-joystick.getLeftY(), -joystick.getLeftX()))));
-
-        // ==================================================================
-        // X BUTON -> Feeder ileri (toplari shooter'a besle, 0.25 hiz)
-        // ==================================================================
-        joystick.x().whileTrue(
-            Commands.runEnd(() -> feeder.feed(), () -> feeder.stop(), feeder));
-
-        // ==================================================================
-        // Y BUTON -> Feeder geri (top cikarma)
+        // Y (ust) -> Elevator yukari (0.25 hiz, basili tutulunca)
         // ==================================================================
         joystick.y().whileTrue(
-            Commands.runEnd(() -> feeder.reverse(), () -> feeder.stop(), feeder));
+            Commands.runEnd(() -> elevator.moveUp(), () -> elevator.stop(), elevator));
 
         // ==================================================================
-        // RB -> AprilTag donus hizalama
+        // A (alt) -> Elevator asagi (0.25 hiz, basili tutulunca)
+        // ==================================================================
+        joystick.a().whileTrue(
+            Commands.runEnd(() -> elevator.moveDown(), () -> elevator.stop(), elevator));
+
+        // ==================================================================
+        // B (sag) -> Structure ileri (toplari shooter'a besle)
+        // ==================================================================
+        joystick.b().whileTrue(
+            Commands.runEnd(() -> structure.feedForward(), () -> structure.stop(), structure));
+
+        // ==================================================================
+        // X (sol) -> Structure geri
+        // ==================================================================
+        joystick.x().whileTrue(
+            Commands.runEnd(() -> structure.feedReverse(), () -> structure.stop(), structure));
+
+        // ==================================================================
+        // RB -> AprilTag donus hizalama (basili tut)
         // ==================================================================
         joystick.rightBumper().whileTrue(
             new AlignToAprilTag(drivetrain, "limelight", MaxSpeed, MaxAngularRate));
 
         // ==================================================================
-        // RT -> Mesafe + donus hizalama (1m hedef)
-        // ==================================================================
-        joystick.rightTrigger(0.5).whileTrue(
-            new AlignToFrontOfTag(drivetrain, "limelight", MaxSpeed, MaxAngularRate)
-                .withDesiredDistance(1.0)
-                .withSpeedScales(0.5, 0.6));
-
-        // ==================================================================
-        // LT -> Surekli AprilTag takibi
+        // LT -> Surekli AprilTag takibi (basili tut)
         // ==================================================================
         joystick.leftTrigger(0.5).whileTrue(
             new TrackAprilTag(drivetrain, "limelight", MaxSpeed, MaxAngularRate, 1.0, 0.5, 0.6));
@@ -253,34 +257,14 @@ public class RobotContainer {
         joystick.leftBumper().onTrue(drivetrain.runOnce(drivetrain::seedFieldCentric));
 
         // ==================================================================
-        // POV UP -> Elevator yukari (0.25 hiz, basili tutulunca)
+        // D-PAD UP -> Vision ON
         // ==================================================================
-        joystick.povUp().whileTrue(
-            Commands.runEnd(() -> elevator.moveUp(), () -> elevator.stop(), elevator));
+        joystick.povUp().onTrue(Commands.runOnce(() -> vision.setEnabled(true)));
 
         // ==================================================================
-        // POV DOWN -> Elevator asagi (0.25 hiz, basili tutulunca)
+        // D-PAD DOWN -> Vision OFF
         // ==================================================================
-        joystick.povDown().whileTrue(
-            Commands.runEnd(() -> elevator.moveDown(), () -> elevator.stop(), elevator));
-
-        // ==================================================================
-        // POV RIGHT -> Structure ileri (toplari yukari besle)
-        // ==================================================================
-        joystick.povRight().whileTrue(
-            Commands.runEnd(() -> structure.feedForward(), () -> structure.stop(), structure));
-
-        // ==================================================================
-        // POV LEFT -> Structure geri
-        // ==================================================================
-        joystick.povLeft().whileTrue(
-            Commands.runEnd(() -> structure.feedReverse(), () -> structure.stop(), structure));
-
-        // ==================================================================
-        // START -> Vision ON / BACK -> Vision OFF
-        // ==================================================================
-        joystick.start().onTrue(Commands.runOnce(() -> vision.setEnabled(true)));
-        joystick.back().onTrue(Commands.runOnce(() -> vision.setEnabled(false)));
+        joystick.povDown().onTrue(Commands.runOnce(() -> vision.setEnabled(false)));
 
         // ==================================================================
         // TELEMETRI

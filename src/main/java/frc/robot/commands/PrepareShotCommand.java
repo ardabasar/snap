@@ -8,6 +8,7 @@ import edu.wpi.first.wpilibj2.command.Command;
 import frc.robot.LimelightHelpers;
 import frc.robot.subsystems.ShooterSubsystem;
 import frc.robot.subsystems.HoodSubsystem;
+import frc.robot.subsystems.FeederSubsystem;
 import frc.robot.subsystems.VisionSubsystem;
 
 /**
@@ -46,6 +47,7 @@ public class PrepareShotCommand extends Command {
 
     private final ShooterSubsystem shooter;
     private final HoodSubsystem hood;
+    private final FeederSubsystem feeder;
     private final VisionSubsystem vision;
     private final String limelightName;
 
@@ -121,21 +123,25 @@ public class PrepareShotCommand extends Command {
 
     /**
      * Tam ozellikli constructor - Odometry + Limelight mesafe.
+     * Shooter basili tutuldugunda feeder de otomatik calisir (0.25 hiz).
      *
      * @param shooter ShooterSubsystem (3 motor)
      * @param hood    HoodSubsystem (2 servo)
+     * @param feeder  FeederSubsystem (1 motor, shooter ile birlikte calisir)
      * @param vision  VisionSubsystem (odometry bazli hub mesafesi)
      * @param limelightName Limelight ismi (fallback icin)
      */
     public PrepareShotCommand(ShooterSubsystem shooter, HoodSubsystem hood,
+                              FeederSubsystem feeder,
                               VisionSubsystem vision, String limelightName) {
         this.shooter = shooter;
         this.hood = hood;
+        this.feeder = feeder;
         this.vision = vision;
         this.limelightName = limelightName;
 
-        // Shooter ve Hood subsystem'lerini require et
-        addRequirements(shooter, hood);
+        // Shooter, Hood ve Feeder subsystem'lerini require et
+        addRequirements(shooter, hood, feeder);
     }
 
     // ========================================================================
@@ -189,8 +195,11 @@ public class PrepareShotCommand extends Command {
         // ==================================================================
         if (currentRPM > 100) {
             shooter.setTargetRPM(currentRPM);
+            // Feeder, shooter calisirken otomatik besler (0.25 hiz)
+            feeder.feed();
         } else {
             shooter.stop();
+            feeder.stop();
         }
 
         hood.setPosition(currentHoodPos);
@@ -214,6 +223,7 @@ public class PrepareShotCommand extends Command {
     @Override
     public void end(boolean interrupted) {
         shooter.stop();
+        feeder.stop();
         hood.setDefault();
 
         LimelightHelpers.setLEDMode_PipelineControl(limelightName);
