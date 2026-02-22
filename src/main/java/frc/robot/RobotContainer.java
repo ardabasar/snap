@@ -20,21 +20,60 @@ import edu.wpi.first.wpilibj2.command.button.RobotModeTriggers;
 
 import frc.robot.commands.AlignToAprilTag;
 import frc.robot.commands.AlignToFrontOfTag;
-import frc.robot.commands.DistanceBasedShooterCommand;
-import frc.robot.commands.RunKrakenCommand;
+import frc.robot.commands.PrepareShotCommand;
 import frc.robot.commands.auto.AutoAlignToTagCommand;
 import frc.robot.commands.auto.TrackAprilTag;
 import frc.robot.commands.auto.VisionAutoSeedCommand;
 import frc.robot.generated.TunerConstants;
 import frc.robot.subsystems.CommandSwerveDrivetrain;
-import frc.robot.subsystems.KrakenMotorSubsystem;
+import frc.robot.subsystems.ElevatorSubsystem;
+import frc.robot.subsystems.StructureSubsystem;
+import frc.robot.subsystems.ShooterSubsystem;
+import frc.robot.subsystems.HoodSubsystem;
+import frc.robot.subsystems.FeederSubsystem;
 import frc.robot.subsystems.VisionSubsystem;
 
+/**
+ * ============================================================================
+ * ROBOT CONTAINER - WCP Big Dumper 2026 REBUILT
+ * ============================================================================
+ * Tum subsystem'lerin ve command binding'lerinin merkezi.
+ *
+ * SUBSYSTEM'LER:
+ *   - CommandSwerveDrivetrain: 4 modul swerve (Caracal CANivore, CAN 1-8)
+ *   - VisionSubsystem: Limelight MegaTag2 lokalizasyon
+ *   - ElevatorSubsystem: 2x TalonFX leader-follower (CAN 9-10)
+ *   - StructureSubsystem: 2x TalonFX leader-follower (CAN 11-12)
+ *   - ShooterSubsystem: 3x TalonFX VelocityVoltage PID (CAN 13-14-15)
+ *   - HoodSubsystem: 2x Servo pozisyon (PWM 3-4)
+ *   - FeederSubsystem: 1x TalonFX DutyCycle (CAN 16)
+ *
+ * CAN ID HARITASI:
+ *   CANivore "Caracal" bus:
+ *     Drive motorlari:  1, 3, 5, 7
+ *     Steer motorlari:  2, 4, 6, 8
+ *     CANcoders:        9, 10, 11, 12
+ *     Pigeon2:          13
+ *   rio bus:
+ *     Elevator:         9 (leader), 10 (follower)
+ *     Structure:        11 (leader), 12 (follower)
+ *     Shooter:          13 (sol), 14 (orta), 15 (sag)
+ *     Feeder:           16
+ *   PWM:
+ *     Hood servolar:    3 (sol), 4 (sag)
+ * ============================================================================
+ */
 public class RobotContainer {
 
+    // ========================================================================
+    // SWERVE SABITLERI
+    // ========================================================================
     private final double MaxSpeed = TunerConstants.kSpeedAt12Volts.in(MetersPerSecond);
     private final double MaxAngularRate = RotationsPerSecond.of(0.25).in(RadiansPerSecond);
 
+    // ========================================================================
+    // SWERVE REQUEST'LER
+    // ========================================================================
     private final SwerveRequest.FieldCentric drive = new SwerveRequest.FieldCentric()
             .withDeadband(MaxSpeed * 0.1)
             .withRotationalDeadband(MaxAngularRate * 0.1)
@@ -47,15 +86,30 @@ public class RobotContainer {
 
     private final Telemetry logger = new Telemetry(MaxSpeed);
 
+    // ========================================================================
+    // CONTROLLER
+    // ========================================================================
     private final CommandXboxController joystick = new CommandXboxController(0);
 
+    // ========================================================================
+    // SUBSYSTEM'LER
+    // ========================================================================
     public final CommandSwerveDrivetrain drivetrain = TunerConstants.createDrivetrain();
-    private final VisionSubsystem vision = new VisionSubsystem(drivetrain, "limelight");
-    private final KrakenMotorSubsystem dumperMotor = new KrakenMotorSubsystem("Kraken", 10, "rio");
-    private final KrakenMotorSubsystem intakeMotor = new KrakenMotorSubsystem("Kraken", 11, "rio");
+    private final VisionSubsystem vision       = new VisionSubsystem(drivetrain, "limelight");
+    private final ElevatorSubsystem elevator   = new ElevatorSubsystem();
+    private final StructureSubsystem structure = new StructureSubsystem();
+    private final ShooterSubsystem shooter     = new ShooterSubsystem();
+    private final HoodSubsystem hood           = new HoodSubsystem();
+    private final FeederSubsystem feeder       = new FeederSubsystem();
 
+    // ========================================================================
+    // OTONOM
+    // ========================================================================
     private final SendableChooser<Command> autoChooser;
 
+    // ========================================================================
+    // CONSTRUCTOR
+    // ========================================================================
     public RobotContainer() {
         registerNamedCommands();
         autoChooser = AutoBuilder.buildAutoChooser("Tests");
@@ -64,40 +118,80 @@ public class RobotContainer {
         CommandScheduler.getInstance().schedule(FollowPathCommand.warmupCommand());
     }
 
+    // ========================================================================
+    // NAMED COMMANDS (PathPlanner Otonom icin)
+    // ========================================================================
     private void registerNamedCommands() {
-        NamedCommands.registerCommand("dumperForward",
-            Commands.runEnd(() -> dumperMotor.setSpeed(1.0), () -> dumperMotor.stop(), dumperMotor).withTimeout(3.0));
+        // Shooter: Mesafe bazli atisa hazirla (shooter + hood birlikte)
+        NamedCommands.registerCommand("prepareShot",
+            new PrepareShotCommand(shooter, hood, vision, "limelight").withTimeout(3.0));
 
-        NamedCommands.registerCommand("dumperReverse",
-            Commands.runEnd(() -> dumperMotor.setSpeed(-1.0), () -> dumperMotor.stop(), dumperMotor).withTimeout(3.0));
+        // Feeder: Toplari shooter'a besle
+        NamedCommands.registerCommand("feed",
+            Commands.runEnd(() -> feeder.feed(), () -> feeder.stop(), feeder).withTimeout(2.0));
 
-        NamedCommands.registerCommand("dumperStop",
-            Commands.runOnce(() -> dumperMotor.stop(), dumperMotor));
+        // Feeder ters: Top cikarma
+        NamedCommands.registerCommand("feedReverse",
+            Commands.runEnd(() -> feeder.reverse(), () -> feeder.stop(), feeder).withTimeout(2.0));
 
-        NamedCommands.registerCommand("distanceShot",
-            new DistanceBasedShooterCommand(dumperMotor, vision, "limelight").withTimeout(3.0));
+        // Elevator yukari
+        NamedCommands.registerCommand("elevatorUp",
+            Commands.runEnd(() -> elevator.moveUp(), () -> elevator.stop(), elevator).withTimeout(3.0));
 
+        // Elevator asagi
+        NamedCommands.registerCommand("elevatorDown",
+            Commands.runEnd(() -> elevator.moveDown(), () -> elevator.stop(), elevator).withTimeout(3.0));
+
+        // Structure ileri (toplari besle)
+        NamedCommands.registerCommand("structureForward",
+            Commands.runEnd(() -> structure.feedForward(), () -> structure.stop(), structure).withTimeout(3.0));
+
+        // Structure geri
+        NamedCommands.registerCommand("structureReverse",
+            Commands.runEnd(() -> structure.feedReverse(), () -> structure.stop(), structure).withTimeout(3.0));
+
+        // Hizalama
         NamedCommands.registerCommand("alignToTag",
             new AutoAlignToTagCommand(drivetrain, "limelight", MaxSpeed, MaxAngularRate, 1.0, 0.25, 0.6));
 
+        // Vision kontrol
         NamedCommands.registerCommand("visionOn", Commands.runOnce(() -> vision.setEnabled(true)));
         NamedCommands.registerCommand("visionOff", Commands.runOnce(() -> vision.setEnabled(false)));
     }
 
     /*
-     * LOGITECH F310 BUTON HARITASI (XInput modu):
-     *   1 (A)  -> Mesafeye dayali atis (Limelight + voltage)
-     *   2 (B)  -> Tekerlekleri yone cevir
-     *   3 (X)  -> Dumper ileri
-     *   4 (Y)  -> Dumper geri
-     *   LB     -> Field-centric sifirla
-     *   RB     -> AprilTag donus hizalama
-     *   RT     -> Yaklasip hizalama (1m)
-     *   LT     -> Surekli tag takibi
-     *   POV    -> Robot-centric / Vision on-off
+     * ========================================================================
+     * LOGITECH F310 / XBOX CONTROLLER BUTON HARITASI (XInput modu)
+     * ========================================================================
+     *
+     *   A buton  -> Mesafe bazli atis (Shooter + Hood: Limelight mesafe -> RPM + aci)
+     *   B buton  -> Tekerlekleri yone cevir (swerve debug)
+     *   X buton  -> Feeder ileri (toplari shooter'a besle)
+     *   Y buton  -> Feeder geri (top cikarma)
+     *
+     *   LB       -> Field-centric sifirla (heading reset)
+     *   RB       -> AprilTag donus hizalama
+     *   RT       -> AprilTag yaklasip hizalama (1m mesafe)
+     *   LT       -> Surekli AprilTag takibi
+     *
+     *   Sol Stick -> Swerve surme (field-centric X/Y)
+     *   Sag Stick X -> Donus (rotation)
+     *
+     *   POV Up    -> Elevator yukari (0.25 hiz)
+     *   POV Down  -> Elevator asagi (0.25 hiz)
+     *   POV Right -> Structure ileri (toplari besle)
+     *   POV Left  -> Structure geri
+     *
+     *   Start buton -> Vision ON
+     *   Back buton  -> Vision OFF
+     *
+     * ========================================================================
      */
     private void configureBindings() {
 
+        // ==================================================================
+        // SWERVE SURME (varsayilan komut)
+        // ==================================================================
         drivetrain.setDefaultCommand(
             drivetrain.applyRequest(() -> drive
                 .withVelocityX(-joystick.getLeftY() * MaxSpeed)
@@ -107,42 +201,90 @@ public class RobotContainer {
         RobotModeTriggers.disabled().whileTrue(
             drivetrain.applyRequest(() -> new SwerveRequest.Idle()).ignoringDisable(true));
 
-        // 1 (A) -> Mesafeye dayali atis (Odometry + Hub mesafesi kullanir)
-        joystick.a().whileTrue(new DistanceBasedShooterCommand(dumperMotor, vision, "limelight"));
+        // ==================================================================
+        // A BUTON -> Mesafe bazli atis (Shooter + Hood birlikte)
+        // Limelight ile mesafe olcup RPM + hood acisi interpolasyonla belirlenir
+        // ==================================================================
+        joystick.a().whileTrue(
+            new PrepareShotCommand(shooter, hood, vision, "limelight"));
 
-        // 2 (B) -> Tekerlekleri yone cevir
+        // ==================================================================
+        // B BUTON -> Tekerlekleri yone cevir (swerve debug)
+        // ==================================================================
         joystick.b().whileTrue(drivetrain.applyRequest(
-            () -> point.withModuleDirection(new Rotation2d(-joystick.getLeftY(), -joystick.getLeftX()))));
+            () -> point.withModuleDirection(
+                new Rotation2d(-joystick.getLeftY(), -joystick.getLeftX()))));
 
-        // 3 (X) -> Dumper ileri
-        joystick.x().whileTrue(new RunKrakenCommand(dumperMotor, 1.0));
+        // ==================================================================
+        // X BUTON -> Feeder ileri (toplari shooter'a besle, 0.25 hiz)
+        // ==================================================================
+        joystick.x().whileTrue(
+            Commands.runEnd(() -> feeder.feed(), () -> feeder.stop(), feeder));
 
-        // 4 (Y) -> Dumper geri
-        joystick.y().whileTrue(new RunKrakenCommand(dumperMotor, -1.0));
+        // ==================================================================
+        // Y BUTON -> Feeder geri (top cikarma)
+        // ==================================================================
+        joystick.y().whileTrue(
+            Commands.runEnd(() -> feeder.reverse(), () -> feeder.stop(), feeder));
 
-        // RB -> Sadece donus hizalama
+        // ==================================================================
+        // RB -> AprilTag donus hizalama
+        // ==================================================================
         joystick.rightBumper().whileTrue(
             new AlignToAprilTag(drivetrain, "limelight", MaxSpeed, MaxAngularRate));
 
-        // RT -> Mesafe + donus hizalama (1m)
+        // ==================================================================
+        // RT -> Mesafe + donus hizalama (1m hedef)
+        // ==================================================================
         joystick.rightTrigger(0.5).whileTrue(
             new AlignToFrontOfTag(drivetrain, "limelight", MaxSpeed, MaxAngularRate)
                 .withDesiredDistance(1.0)
                 .withSpeedScales(0.5, 0.6));
 
-        // LT -> Surekli tag takibi
+        // ==================================================================
+        // LT -> Surekli AprilTag takibi
+        // ==================================================================
         joystick.leftTrigger(0.5).whileTrue(
             new TrackAprilTag(drivetrain, "limelight", MaxSpeed, MaxAngularRate, 1.0, 0.5, 0.6));
 
-        // LB -> Field-centric sifirla
+        // ==================================================================
+        // LB -> Field-centric sifirla (heading reset)
+        // ==================================================================
         joystick.leftBumper().onTrue(drivetrain.runOnce(drivetrain::seedFieldCentric));
 
-        // POV
-        joystick.povUp().whileTrue(drivetrain.applyRequest(() -> forwardStraight.withVelocityX(0.5).withVelocityY(0)));
-        joystick.povDown().whileTrue(drivetrain.applyRequest(() -> forwardStraight.withVelocityX(-0.5).withVelocityY(0)));
-        joystick.povRight().onTrue(Commands.runOnce(() -> vision.setEnabled(true)));
-        joystick.povLeft().onTrue(Commands.runOnce(() -> vision.setEnabled(false)));
+        // ==================================================================
+        // POV UP -> Elevator yukari (0.25 hiz, basili tutulunca)
+        // ==================================================================
+        joystick.povUp().whileTrue(
+            Commands.runEnd(() -> elevator.moveUp(), () -> elevator.stop(), elevator));
 
+        // ==================================================================
+        // POV DOWN -> Elevator asagi (0.25 hiz, basili tutulunca)
+        // ==================================================================
+        joystick.povDown().whileTrue(
+            Commands.runEnd(() -> elevator.moveDown(), () -> elevator.stop(), elevator));
+
+        // ==================================================================
+        // POV RIGHT -> Structure ileri (toplari yukari besle)
+        // ==================================================================
+        joystick.povRight().whileTrue(
+            Commands.runEnd(() -> structure.feedForward(), () -> structure.stop(), structure));
+
+        // ==================================================================
+        // POV LEFT -> Structure geri
+        // ==================================================================
+        joystick.povLeft().whileTrue(
+            Commands.runEnd(() -> structure.feedReverse(), () -> structure.stop(), structure));
+
+        // ==================================================================
+        // START -> Vision ON / BACK -> Vision OFF
+        // ==================================================================
+        joystick.start().onTrue(Commands.runOnce(() -> vision.setEnabled(true)));
+        joystick.back().onTrue(Commands.runOnce(() -> vision.setEnabled(false)));
+
+        // ==================================================================
+        // TELEMETRI
+        // ==================================================================
         drivetrain.registerTelemetry(logger::telemeterize);
     }
 
@@ -156,28 +298,25 @@ public class RobotContainer {
      *   2) PathPlanner Auto: Secilen otonom rutini calisir. PathPlanner'in
      *      resetPose cagrisi IGNORE edilir cunku vision zaten gercek pozisyonu
      *      seed etmistir.
-     * 
-     * NEDEN?
-     *   Robot sahada NEREYE konulursa konsun, vision ile gercek konumunu
-     *   bilir ve PathPlanner yolunu oradan dogru sekilde takip eder.
-     *   Artik PathPlanner'daki baslangic noktasi ile robotun fiziksel
-     *   konumu uyusmak ZORUNDA DEGIL.
      */
     public Command getAutonomousCommand() {
         Command selected = autoChooser.getSelected();
         if (selected == null) return Commands.print("Otonom secilmedi!");
-        
+
         return Commands.sequence(
-            // ADIM 1: Vision ile gercek konumu bul ve odometry'e yaz
             new VisionAutoSeedCommand(drivetrain, vision, "limelight"),
-            
-            // ADIM 2: PathPlanner otonomunu calistir
-            // (resetPose cagrisi vision seed varsa ignore edilecek)
             selected.asProxy()
         );
     }
 
+    // ========================================================================
+    // GETTER'LAR
+    // ========================================================================
     public CommandSwerveDrivetrain getDrivetrain() { return drivetrain; }
     public VisionSubsystem getVision() { return vision; }
-    public KrakenMotorSubsystem getDumperMotor() { return dumperMotor; }
+    public ElevatorSubsystem getElevator() { return elevator; }
+    public StructureSubsystem getStructure() { return structure; }
+    public ShooterSubsystem getShooter() { return shooter; }
+    public HoodSubsystem getHood() { return hood; }
+    public FeederSubsystem getFeeder() { return feeder; }
 }
