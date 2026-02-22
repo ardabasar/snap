@@ -21,36 +21,32 @@ public class AlignToAprilTag extends Command {
   private final double maxAngularRate;
 
   // ============================================================
-  // GUVENLI VE YUMUSAK AYARLAR
-  // "Tekerlek kudurma" sorunu bu degerlerle onlendi:
-  //   - Dusuk PID -> yavas ve kontrollü donus
-  //   - Yuksek deadband -> kucuk titremeleri yok sayar
-  //   - Dusuk rate limiter -> ani hiz degisimi engellenir
-  //   - Tag kaybolunca yumusak durma (SlewRateLimiter 0'a ceker)
+  // DENGELI VE YUMUSAK AYARLAR (orijinal tune edilmis degerler)
+  // Tag kaybolunca yumusak durma eklendi (SlewRateLimiter 0'a ceker)
   // ============================================================
 
-  // PID degerleri - DUSUK tutuldu (agresif donus ENGELLENDI)
-  private static final double kP = 0.030;  // Dusuk = kontrollü
+  // PID degerleri - Dengeli
+  private static final double kP = 0.045;
   private static final double kI = 0.0;
-  private static final double kD = 0.003;  // Dusuk = titreme onlenir
+  private static final double kD = 0.005;
 
   // Minimum donus hizi
-  private static final double MIN_OUTPUT = 0.06;
+  private static final double MIN_OUTPUT = 0.08;
 
   // Tolerans - Hedefe ulasildigi kabul araligi
-  private static final double TOLERANCE_DEG = 2.0;
+  private static final double TOLERANCE_DEG = 1.5;
 
-  // Deadband - Bu araliktaki kucuk hatalari YOKSAY (titreme onler)
-  private static final double DEADBAND_DEG = 1.0;
+  // Deadband - Bu araliktaki hatay yoksay (titreme onler)
+  private static final double DEADBAND_DEG = 0.5;
 
   // Robot TERS donuyorsa -1.0 yap
   private static final double INVERT = 1.0;
 
-  // Donus hiz olcegi - DUSUK (tam gaz donmesin)
-  private double rotScale = 0.5;
+  // Donus hiz olcegi
+  private double rotScale = 0.7;
 
-  // Rate limiter - YAVAS ivme (tekerleklerin aniden hareket etmesini onler)
-  private static final double MAX_ACCEL_RAD_PER_SEC_SQ = 3.0;
+  // Rate limiter - Yumusak ivmelenme
+  private static final double MAX_ACCEL_RAD_PER_SEC_SQ = 5.0;
 
   // ============================================================
 
