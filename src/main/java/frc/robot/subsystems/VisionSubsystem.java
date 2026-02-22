@@ -91,20 +91,19 @@ public class VisionSubsystem extends SubsystemBase {
     private final NetworkTable posTable = ntInst.getTable("RobotPosition");
 
     // Robot konum verileri
+    // Elastic'te gosterim sirasi (yukaridan asagiya):
+    // 1) Hub mesafeleri
+    private final DoublePublisher pubDistRedHub  = posTable.getDoubleTopic("Red Hub Mesafe (m)").publish();
+    private final DoublePublisher pubDistBlueHub = posTable.getDoubleTopic("Blue Hub Mesafe (m)").publish();
+    // 2) Saha bolgesi
+    private final StringPublisher pubZone = posTable.getStringTopic("Saha Bolgesi").publish();
+    // 3) Tag bilgisi
+    private final DoublePublisher pubTagId     = posTable.getDoubleTopic("Gorulen Tag ID").publish();
+    private final DoublePublisher pubTagDist   = posTable.getDoubleTopic("Tag Mesafe (m)").publish();
+    // 4) Robot konumu
     private final DoublePublisher pubX       = posTable.getDoubleTopic("X (m)").publish();
     private final DoublePublisher pubY       = posTable.getDoubleTopic("Y (m)").publish();
     private final DoublePublisher pubHeading = posTable.getDoubleTopic("Heading (deg)").publish();
-
-    // Hub mesafeleri - HER IKI HUB AYRI AYRI (Elastic'te 2 widget)
-    private final DoublePublisher pubDistRedHub  = posTable.getDoubleTopic("Red Hub Mesafe (m)").publish();
-    private final DoublePublisher pubDistBlueHub = posTable.getDoubleTopic("Blue Hub Mesafe (m)").publish();
-
-    // AprilTag verileri
-    private final DoublePublisher pubTagId     = posTable.getDoubleTopic("Gorulen Tag ID").publish();
-    private final DoublePublisher pubTagDist   = posTable.getDoubleTopic("Tag Mesafe (m)").publish();
-
-    // Saha bolge bilgisi
-    private final StringPublisher pubZone = posTable.getStringTopic("Saha Bolgesi").publish();
 
     // ========================================================================
     // 2026 REBUILT SAHA KOORDINATLARI (metre cinsinden)
@@ -306,24 +305,24 @@ public class VisionSubsystem extends SubsystemBase {
             double robotY = currentPose.getY();
             double robotHeading = currentPose.getRotation().getDegrees();
 
-            // Robot konum
-            pubX.set(round2(robotX));
-            pubY.set(round2(robotY));
-            pubHeading.set(Math.round(robotHeading * 10.0) / 10.0);
-
-            // Hub mesafeleri - her iki hub ayri ayri gosterilir
+            // 1) Hub mesafeleri (en ustte)
             Translation2d robotPos = currentPose.getTranslation();
             double dRedHub  = robotPos.getDistance(RED_HUB_CENTER);
             double dBlueHub = robotPos.getDistance(BLUE_HUB_CENTER);
             pubDistRedHub.set(round2(dRedHub));
             pubDistBlueHub.set(round2(dBlueHub));
 
-            // Saha bolgesi
+            // 2) Saha bolgesi
             String zone = getFieldZone(robotX, robotY);
             pubZone.set(zone);
 
-            // Limelight gorulen tag bilgisi
+            // 3) Gorulen tag bilgisi
             updateTagTelemetry();
+
+            // 4) Robot konum (en altta)
+            pubX.set(round2(robotX));
+            pubY.set(round2(robotY));
+            pubHeading.set(Math.round(robotHeading * 10.0) / 10.0);
         }
 
         // ==================================================================
