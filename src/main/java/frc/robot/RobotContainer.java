@@ -18,7 +18,10 @@ import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
 import edu.wpi.first.wpilibj2.command.button.RobotModeTriggers;
 
 import frc.robot.commands.AlignToAprilTag;
-import frc.robot.commands.PrepareShotCommand;
+import frc.robot.commands.ElevatorCommand;
+import frc.robot.commands.StructureCommand;
+import frc.robot.commands.FeederCommand;
+import frc.robot.commands.ShootCommand;
 import frc.robot.commands.auto.AutoAlignToTagCommand;
 import frc.robot.commands.auto.TrackAprilTag;
 import frc.robot.commands.auto.VisionAutoSeedCommand;
@@ -119,33 +122,33 @@ public class RobotContainer {
     // NAMED COMMANDS (PathPlanner Otonom icin)
     // ========================================================================
     private void registerNamedCommands() {
-        // Shooter: Mesafe bazli atisa hazirla (shooter + hood + feeder birlikte)
-        NamedCommands.registerCommand("prepareShot",
-            new PrepareShotCommand(shooter, hood, feeder, vision, "limelight").withTimeout(3.0));
+        // Atis: Shooter + Hood + Feeder (shooter hazir olunca feeder baslar)
+        NamedCommands.registerCommand("shoot",
+            new ShootCommand(shooter, hood, feeder, vision, "limelight").withTimeout(3.0));
 
         // Feeder: Toplari shooter'a besle
         NamedCommands.registerCommand("feed",
-            Commands.runEnd(() -> feeder.feed(), () -> feeder.stop(), feeder).withTimeout(2.0));
+            new FeederCommand(feeder, FeederCommand.Direction.FEED).withTimeout(2.0));
 
         // Feeder ters: Top cikarma
         NamedCommands.registerCommand("feedReverse",
-            Commands.runEnd(() -> feeder.reverse(), () -> feeder.stop(), feeder).withTimeout(2.0));
+            new FeederCommand(feeder, FeederCommand.Direction.REVERSE).withTimeout(2.0));
 
         // Elevator yukari
         NamedCommands.registerCommand("elevatorUp",
-            Commands.runEnd(() -> elevator.moveUp(), () -> elevator.stop(), elevator).withTimeout(3.0));
+            new ElevatorCommand(elevator, ElevatorCommand.Direction.UP).withTimeout(3.0));
 
         // Elevator asagi
         NamedCommands.registerCommand("elevatorDown",
-            Commands.runEnd(() -> elevator.moveDown(), () -> elevator.stop(), elevator).withTimeout(3.0));
+            new ElevatorCommand(elevator, ElevatorCommand.Direction.DOWN).withTimeout(3.0));
 
         // Structure ileri (toplari besle)
         NamedCommands.registerCommand("structureForward",
-            Commands.runEnd(() -> structure.feedForward(), () -> structure.stop(), structure).withTimeout(3.0));
+            new StructureCommand(structure, StructureCommand.Direction.FORWARD).withTimeout(3.0));
 
         // Structure geri
         NamedCommands.registerCommand("structureReverse",
-            Commands.runEnd(() -> structure.feedReverse(), () -> structure.stop(), structure).withTimeout(3.0));
+            new StructureCommand(structure, StructureCommand.Direction.REVERSE).withTimeout(3.0));
 
         // Hizalama
         NamedCommands.registerCommand("alignToTag",
@@ -205,39 +208,39 @@ public class RobotContainer {
             drivetrain.applyRequest(() -> new SwerveRequest.Idle()).ignoringDisable(true));
 
         // ==================================================================
-        // RT (Sag Trigger) -> ATIS KOMUTU
-        // Shooter + Hood + Feeder birlikte calisir:
-        //   - Limelight ile hub mesafesi olculur
-        //   - Mesafeye gore RPM + hood acisi enterpolasyonla belirlenir
-        //   - Feeder otomatik olarak 0.25 hizda toplari shooter'a besler
-        //   - Buton birakilinca hepsi durur, hood sifira doner
+        // RT (Sag Trigger) -> ATIS KOMUTU (ShootCommand)
+        //   1) Limelight ile hub mesafesi olculur
+        //   2) Mesafeye gore RPM + hood acisi enterpolasyonla belirlenir
+        //   3) Shooter motorlari hedef RPM'e hizlanir
+        //   4) Shooter HAZIR olunca -> Feeder otomatik baslar (0.25 hiz)
+        //   5) Buton birakilinca hepsi durur, hood sifira doner
         // ==================================================================
         joystick.rightTrigger(0.5).whileTrue(
-            new PrepareShotCommand(shooter, hood, feeder, vision, "limelight"));
+            new ShootCommand(shooter, hood, feeder, vision, "limelight"));
 
         // ==================================================================
         // Y (ust) -> Elevator yukari (0.25 hiz, basili tutulunca)
         // ==================================================================
         joystick.y().whileTrue(
-            Commands.runEnd(() -> elevator.moveUp(), () -> elevator.stop(), elevator));
+            new ElevatorCommand(elevator, ElevatorCommand.Direction.UP));
 
         // ==================================================================
         // A (alt) -> Elevator asagi (0.25 hiz, basili tutulunca)
         // ==================================================================
         joystick.a().whileTrue(
-            Commands.runEnd(() -> elevator.moveDown(), () -> elevator.stop(), elevator));
+            new ElevatorCommand(elevator, ElevatorCommand.Direction.DOWN));
 
         // ==================================================================
         // B (sag) -> Structure ileri (toplari shooter'a besle)
         // ==================================================================
         joystick.b().whileTrue(
-            Commands.runEnd(() -> structure.feedForward(), () -> structure.stop(), structure));
+            new StructureCommand(structure, StructureCommand.Direction.FORWARD));
 
         // ==================================================================
         // X (sol) -> Structure geri
         // ==================================================================
         joystick.x().whileTrue(
-            Commands.runEnd(() -> structure.feedReverse(), () -> structure.stop(), structure));
+            new StructureCommand(structure, StructureCommand.Direction.REVERSE));
 
         // ==================================================================
         // RB -> AprilTag donus hizalama (basili tut)
