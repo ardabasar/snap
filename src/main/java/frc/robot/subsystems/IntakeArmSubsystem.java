@@ -120,6 +120,19 @@ public class IntakeArmSubsystem extends SubsystemBase {
         motor.setControl(dutyCycleRequest.withOutput(targetSpeed));
     }
 
+    /** Kolu belirtilen pozisyona dogru hareket ettirir.
+     *  0.0 = stow (kapali), INTAKE_POSITION = acik. */
+    public void goToPosition(double targetPos) {
+        double current = getPosition();
+        if (Math.abs(current - targetPos) < POSITION_TOLERANCE) {
+            stop();
+        } else if (current < targetPos) {
+            setSpeed(ARM_SPEED);
+        } else {
+            setSpeed(-ARM_SPEED);
+        }
+    }
+
     /** Kolu durdurur (Brake mode tutar). */
     public void stop() {
         targetSpeed = 0.0;
