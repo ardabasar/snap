@@ -52,31 +52,16 @@ public class ShootCommand extends Command {
     private static final TreeMap<Double, Double> HOOD_TABLE = new TreeMap<>();
 
     static {
-        // WCP referans degerleri - SAHADA KALIBRE EDILECEK!
-        // Nasil kalibre edilir:
-        //   1) Robotu hub'a bilinen mesafede koy (ornegin 2m, 3m, 4m...)
-        //   2) Elastic'te Shoot/Distance degerini oku
-        //   3) Manuel RPM dene, hub'a giren RPM'i bul
-        //   4) Asagidaki tabloya yaz
-        RPM_TABLE.put(1.32, 2800.0);   //  52 inch
-        RPM_TABLE.put(2.06, 3000.0);   //  81 inch
-        RPM_TABLE.put(2.90, 3275.0);   // 114 inch
-        RPM_TABLE.put(3.48, 3425.0);   // 137 inch
-        RPM_TABLE.put(3.81, 3500.0);   // 150 inch
-        RPM_TABLE.put(4.19, 3650.0);   // 165 inch
-        RPM_TABLE.put(5.08, 4100.0);   // 200 inch
-        RPM_TABLE.put(5.72, 4500.0);   // 225 inch
-        RPM_TABLE.put(6.35, 5000.0);   // 250 inch
+        // WCP RESMI DEGERLER (PrepareShotCommand.java'dan birebir)
+        // WCP sadece 3 nokta veriyor - arasini TreeMap enterpolasyonla dolduruyor
+        // Sahada ek mesafe noktalari eklenebilir
+        RPM_TABLE.put(1.32, 2800.0);    //  52 inch - WCP resmi
+        RPM_TABLE.put(2.91, 3275.0);    // 114.4 inch - WCP resmi
+        RPM_TABLE.put(4.20, 3650.0);    // 165.5 inch - WCP resmi
 
-        HOOD_TABLE.put(1.32, 0.19);
-        HOOD_TABLE.put(2.06, 0.32);
-        HOOD_TABLE.put(2.90, 0.40);
-        HOOD_TABLE.put(3.48, 0.43);
-        HOOD_TABLE.put(3.81, 0.46);
-        HOOD_TABLE.put(4.19, 0.48);
-        HOOD_TABLE.put(5.08, 0.55);
-        HOOD_TABLE.put(5.72, 0.60);
-        HOOD_TABLE.put(6.35, 0.65);
+        HOOD_TABLE.put(1.32, 0.19);     //  52 inch - WCP resmi
+        HOOD_TABLE.put(2.91, 0.40);     // 114.4 inch - WCP resmi
+        HOOD_TABLE.put(4.20, 0.48);     // 165.5 inch - WCP resmi
     }
 
     // ========================================================================

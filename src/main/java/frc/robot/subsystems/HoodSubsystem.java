@@ -81,6 +81,10 @@ public class HoodSubsystem extends SubsystemBase {
         leftServo  = new Servo(LEFT_SERVO_PWM);
         rightServo = new Servo(RIGHT_SERVO_PWM);
 
+        // WCP servo PWM sinirlari (mikrosaniye)
+        leftServo.setBoundsMicroseconds(2000, 1800, 1500, 1200, 1000);
+        rightServo.setBoundsMicroseconds(2000, 1800, 1500, 1200, 1000);
+
         // Baslangic pozisyonu
         setPosition(DEFAULT_POSITION);
 

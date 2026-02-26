@@ -44,16 +44,18 @@ public class ShooterSubsystem extends SubsystemBase {
     public static final String CAN_BUS     = "rio";
 
     // ========================================================================
-    // PID SABITLERI (VelocityVoltage Slot 0)
+    // PID SABITLERI (VelocityVoltage Slot 0) - WCP RESMI DEGERLER
     // ========================================================================
-    private static final double kP = 0.2;
-    private static final double kI = 0.0;
+    private static final double kP = 0.5;
+    private static final double kI = 2.0;
     private static final double kD = 0.0;
-    private static final double kV = 0.12;
-    private static final double kS = 0.05;
+    // kV = 12V / Kraken X60 free speed (6000 RPM = 100 RPS)
+    private static final double kV = 12.0 / 100.0;  // 0.12
+    private static final double kS = 0.0;
 
-    /** Stator akim limiti (Amper) */
-    private static final double STATOR_CURRENT_LIMIT = 60.0;
+    /** Stator akim limiti (Amper) - WCP: 120A stator, 70A supply */
+    private static final double STATOR_CURRENT_LIMIT = 120.0;
+    private static final double SUPPLY_CURRENT_LIMIT = 70.0;
 
     /** RPM toleransi - hedefe bu kadar yaklasinca "hazir" sayilir */
     private static final double RPM_TOLERANCE = 150.0;
@@ -119,33 +121,32 @@ public class ShooterSubsystem extends SubsystemBase {
         config1.Slot0.kS = kS;
         config1.CurrentLimits.StatorCurrentLimitEnable = true;
         config1.CurrentLimits.StatorCurrentLimit = STATOR_CURRENT_LIMIT;
+        config1.CurrentLimits.SupplyCurrentLimitEnable = true;
+        config1.CurrentLimits.SupplyCurrentLimit = SUPPLY_CURRENT_LIMIT;
+        config1.Voltage.PeakReverseVoltage = 0;  // WCP: ters voltaj yok
         motor1.getConfigurator().apply(config1);
 
-        // Motor 2 config: -1 yon (Clockwise_Positive)
-        TalonFXConfiguration config2 = new TalonFXConfiguration();
-        config2.MotorOutput.NeutralMode = NeutralModeValue.Coast;
-        config2.MotorOutput.Inverted = InvertedValue.Clockwise_Positive;
-        config2.Slot0.kP = kP;
-        config2.Slot0.kI = kI;
-        config2.Slot0.kD = kD;
-        config2.Slot0.kV = kV;
-        config2.Slot0.kS = kS;
-        config2.CurrentLimits.StatorCurrentLimitEnable = true;
-        config2.CurrentLimits.StatorCurrentLimit = STATOR_CURRENT_LIMIT;
-        motor2.getConfigurator().apply(config2);
+        // Motor 2 & 3: ayni config, sadece yon farkli
+        applyConfig(motor2, InvertedValue.Clockwise_Positive);
+        applyConfig(motor3, InvertedValue.Clockwise_Positive);
+    }
 
-        // Motor 3 config: -1 yon (Clockwise_Positive)
-        TalonFXConfiguration config3 = new TalonFXConfiguration();
-        config3.MotorOutput.NeutralMode = NeutralModeValue.Coast;
-        config3.MotorOutput.Inverted = InvertedValue.Clockwise_Positive;
-        config3.Slot0.kP = kP;
-        config3.Slot0.kI = kI;
-        config3.Slot0.kD = kD;
-        config3.Slot0.kV = kV;
-        config3.Slot0.kS = kS;
-        config3.CurrentLimits.StatorCurrentLimitEnable = true;
-        config3.CurrentLimits.StatorCurrentLimit = STATOR_CURRENT_LIMIT;
-        motor3.getConfigurator().apply(config3);
+    /** Tekrari onlemek icin config uygulama metodu */
+    private void applyConfig(TalonFX motor, InvertedValue direction) {
+        TalonFXConfiguration cfg = new TalonFXConfiguration();
+        cfg.MotorOutput.NeutralMode = NeutralModeValue.Coast;
+        cfg.MotorOutput.Inverted = direction;
+        cfg.Slot0.kP = kP;
+        cfg.Slot0.kI = kI;
+        cfg.Slot0.kD = kD;
+        cfg.Slot0.kV = kV;
+        cfg.Slot0.kS = kS;
+        cfg.CurrentLimits.StatorCurrentLimitEnable = true;
+        cfg.CurrentLimits.StatorCurrentLimit = STATOR_CURRENT_LIMIT;
+        cfg.CurrentLimits.SupplyCurrentLimitEnable = true;
+        cfg.CurrentLimits.SupplyCurrentLimit = SUPPLY_CURRENT_LIMIT;
+        cfg.Voltage.PeakReverseVoltage = 0;
+        motor.getConfigurator().apply(cfg);
     }
 
     // ========================================================================
