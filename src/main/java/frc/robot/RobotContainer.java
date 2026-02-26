@@ -25,7 +25,6 @@ import frc.robot.commands.ShootCommand;
 import frc.robot.commands.IntakeCommand;
 import frc.robot.commands.ClimbCommand;
 import frc.robot.commands.auto.AutoAlignToTagCommand;
-import frc.robot.commands.auto.TrackAprilTag;
 import frc.robot.commands.auto.VisionAutoSeedCommand;
 import frc.robot.generated.TunerConstants;
 import frc.robot.subsystems.CommandSwerveDrivetrain;
@@ -164,34 +163,39 @@ public class RobotContainer {
      * XBOX CONTROLLER BUTON HARITASI - 2026 REBUILT
      * ========================================================================
      *
-     *  STICKS:
+     *  STICKS (SADECE SURUS):
      *    Sol Stick       -> Swerve surme (field-centric X/Y)
      *    Sag Stick X     -> Donus (rotation)
      *
      *  FACE BUTONLARI:
-     *    A (alt)         -> INTAKE (arm pozisyona git + roller 0.5 hiz)
-     *    B (sag)         -> Hopper calistir (-0.25, kayislari besle)
-     *    X (sol)         -> Hopper ters (+0.25, geriye al)
+     *    A (alt)         -> INTAKE (arm pozisyona git + roller)
+     *    B (sag)         -> Hopper calistir (kayislari besle)
+     *    X (sol)         -> Hopper ters (geriye al)
      *    Y (ust)         -> Climb yukari (+0.25)
      *
      *  BUMPER / TRIGGER:
-     *    LB              -> Field-centric sifirla (heading reset)
      *    RB              -> AprilTag donus hizalama (basili tut)
-     *    RT              -> ATIS! (Shooter + Feeder + Hood + Hopper + IntakeArm)
-     *    LT              -> Surekli AprilTag takibi (basili tut)
+     *    RT              -> ATIS! (Shooter+Feeder+Hood+Hopper+IntakeArm)
+     *    LB              -> Intake kapat (arm stow pozisyonuna don)
+     *    LT              -> Climb asagi (-0.25)
      *
      *  D-PAD:
-     *    D-PAD Up        -> Climb yukari (+0.25)
-     *    D-PAD Down      -> Climb asagi (-0.25)
+     *    (bos - surus kontrolune karismaz)
      *
-     *  VISION: HER ZAMAN ACIK
+     *  MENU:
+     *    Back            -> Field-centric sifirla (heading reset)
+     *    Start           -> (bos)
+     *
+     *  OTOMATIK:
+     *    Vision          -> HER ZAMAN ACIK
+     *    Intake Arm      -> Otonomda tamamen acik, otonom bitince kapatilir
      *
      * ========================================================================
      */
     private void configureBindings() {
 
         // ==================================================================
-        // SWERVE SURME (varsayilan komut)
+        // SWERVE SURME (varsayilan komut - sadece stickler)
         // ==================================================================
         drivetrain.setDefaultCommand(
             drivetrain.applyRequest(() -> drive
@@ -203,45 +207,13 @@ public class RobotContainer {
             drivetrain.applyRequest(() -> new SwerveRequest.Idle()).ignoringDisable(true));
 
         // ==================================================================
-        // RT (Sag Trigger) -> ATIS KOMUTU
-        //   Shooter (CAN 9,10,11) + Feeder (CAN 15) + Hood (PWM 3,4)
-        //   + Hopper (CAN 14) + IntakeArm (CAN 12) yarim hizda
-        //   Hepsi birlikte calisir, mesafe bazli voltaj/RPM
+        // RT (Sag Trigger) -> ATIS
+        //   Mesafe olc -> Shooter RPM + Hood aci ayarla
+        //   Shooter hazir olunca -> Feeder + Hopper + IntakeArm (yarim hiz)
+        //   Birakinca hepsi durur, hood sifira doner
         // ==================================================================
         joystick.rightTrigger(0.5).whileTrue(
             new ShootCommand(shooter, hood, feeder, hopper, intakeArm, vision, "limelight"));
-
-        // ==================================================================
-        // A (alt) -> INTAKE (arm + roller)
-        //   Arm (CAN 12) hedef pozisyona gider
-        //   Roller (CAN 13) arm pozisyona gelince 0.5 hizda baslar
-        // ==================================================================
-        joystick.a().whileTrue(
-            new IntakeCommand(intakeArm, intakeRoller));
-
-        // ==================================================================
-        // B (sag) -> Hopper calistir (-0.25 hiz, kayislari besle)
-        // ==================================================================
-        joystick.b().whileTrue(
-            Commands.startEnd(() -> hopper.run(), () -> hopper.stop(), hopper));
-
-        // ==================================================================
-        // X (sol) -> Hopper ters (+0.25 hiz, geri al)
-        // ==================================================================
-        joystick.x().whileTrue(
-            Commands.startEnd(() -> hopper.reverse(), () -> hopper.stop(), hopper));
-
-        // ==================================================================
-        // D-PAD Up -> Climb yukari (+0.25)
-        // ==================================================================
-        joystick.povUp().whileTrue(
-            new ClimbCommand(climb, ClimbCommand.Direction.UP));
-
-        // ==================================================================
-        // D-PAD Down -> Climb asagi (-0.25)
-        // ==================================================================
-        joystick.povDown().whileTrue(
-            new ClimbCommand(climb, ClimbCommand.Direction.DOWN));
 
         // ==================================================================
         // RB -> AprilTag donus hizalama (basili tut)
@@ -250,15 +222,45 @@ public class RobotContainer {
             new AlignToAprilTag(drivetrain, "limelight", MaxSpeed, MaxAngularRate));
 
         // ==================================================================
-        // LT -> Surekli AprilTag takibi (basili tut)
+        // A -> INTAKE (arm pozisyona git + roller baslar)
         // ==================================================================
-        joystick.leftTrigger(0.5).whileTrue(
-            new TrackAprilTag(drivetrain, "limelight", MaxSpeed, MaxAngularRate, 1.0, 0.5, 0.6));
+        joystick.a().whileTrue(
+            new IntakeCommand(intakeArm, intakeRoller));
 
         // ==================================================================
-        // LB -> Field-centric sifirla (heading reset)
+        // LB -> Intake kapat (arm stow / baslangic pozisyonuna don)
         // ==================================================================
-        joystick.leftBumper().onTrue(drivetrain.runOnce(drivetrain::seedFieldCentric));
+        joystick.leftBumper().onTrue(
+            Commands.runOnce(() -> intakeArm.goToPosition(0.0), intakeArm));
+
+        // ==================================================================
+        // B -> Hopper calistir (kayislari besle)
+        // ==================================================================
+        joystick.b().whileTrue(
+            Commands.startEnd(() -> hopper.run(), () -> hopper.stop(), hopper));
+
+        // ==================================================================
+        // X -> Hopper ters (geriye al - top sikismasi vs.)
+        // ==================================================================
+        joystick.x().whileTrue(
+            Commands.startEnd(() -> hopper.reverse(), () -> hopper.stop(), hopper));
+
+        // ==================================================================
+        // Y -> Climb yukari (+0.25)
+        // ==================================================================
+        joystick.y().whileTrue(
+            new ClimbCommand(climb, ClimbCommand.Direction.UP));
+
+        // ==================================================================
+        // LT -> Climb asagi (-0.25)
+        // ==================================================================
+        joystick.leftTrigger(0.5).whileTrue(
+            new ClimbCommand(climb, ClimbCommand.Direction.DOWN));
+
+        // ==================================================================
+        // Back -> Field-centric sifirla (heading reset)
+        // ==================================================================
+        joystick.back().onTrue(drivetrain.runOnce(drivetrain::seedFieldCentric));
 
         // ==================================================================
         // TELEMETRI
