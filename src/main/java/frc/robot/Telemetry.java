@@ -83,22 +83,22 @@ public class Telemetry {
                 builder.setSmartDashboardType("SwerveDrive");
 
                 builder.addDoubleProperty("Front Left Angle",
-                    () -> m_cachedStates[0].angle.getDegrees(), null);
+                    () -> m_lastModuleAnglesDeg[0], null);
                 builder.addDoubleProperty("Front Left Velocity",
                     () -> m_cachedStates[0].speedMetersPerSecond, null);
 
                 builder.addDoubleProperty("Front Right Angle",
-                    () -> m_cachedStates[1].angle.getDegrees(), null);
+                    () -> m_lastModuleAnglesDeg[1], null);
                 builder.addDoubleProperty("Front Right Velocity",
                     () -> m_cachedStates[1].speedMetersPerSecond, null);
 
                 builder.addDoubleProperty("Back Left Angle",
-                    () -> m_cachedStates[2].angle.getDegrees(), null);
+                    () -> m_lastModuleAnglesDeg[2], null);
                 builder.addDoubleProperty("Back Left Velocity",
                     () -> m_cachedStates[2].speedMetersPerSecond, null);
 
                 builder.addDoubleProperty("Back Right Angle",
-                    () -> m_cachedStates[3].angle.getDegrees(), null);
+                    () -> m_lastModuleAnglesDeg[3], null);
                 builder.addDoubleProperty("Back Right Velocity",
                     () -> m_cachedStates[3].speedMetersPerSecond, null);
 
@@ -161,9 +161,25 @@ public class Telemetry {
     };
     private volatile double m_cachedRobotAngle = 0.0;
 
+    /**
+     * Son bilinen modul acilari (derece).
+     * Robot durdugunda (hiz ~0) swerve modul acisi belirsiz olur ve
+     * rastgele ziplayarak widget'in cildirmis gibi donmesine neden olur.
+     * Cozum: hiz dusukken son bilinen aciyi koru, guncelleme.
+     */
+    private final double[] m_lastModuleAnglesDeg = new double[4];
+    private static final double SPEED_DEADBAND = 0.05; // m/s altinda aci guncellenmez
+
     /** Accept the swerve drive state and telemeterize it to SmartDashboard and SignalLogger. */
     public void telemeterize(SwerveDriveState state) {
-        /* Cache state for Elastic SwerveDrive widget */
+        /* Cache state for Elastic SwerveDrive widget.
+         * Hiz cok dusukse aciyi GUNCELLEME - son bilinen aciyi koru.
+         * Bu, widget'in robot dururken 360 donmesini engeller. */
+        for (int i = 0; i < 4; i++) {
+            if (Math.abs(state.ModuleStates[i].speedMetersPerSecond) > SPEED_DEADBAND) {
+                m_lastModuleAnglesDeg[i] = state.ModuleStates[i].angle.getDegrees();
+            }
+        }
         m_cachedStates = state.ModuleStates;
         m_cachedRobotAngle = state.Pose.getRotation().getRadians();
 
