@@ -169,19 +169,19 @@ public class RobotContainer {
      *    Sag Stick X     -> Donus (rotation)
      *
      *  FACE BUTONLARI:
-     *    A (alt)         -> INTAKE (arm pozisyona git + roller)
-     *    B (sag)         -> Hopper calistir (kayislari besle)
-     *    X (sol)         -> Hopper ters (geriye al)
-     *    Y (ust)         -> Climb yukari (+0.25)
+     *    A (alt)         -> Intake ARM ac (basili tut = +0.25)
+     *    B (sag)         -> Intake ROLLER calistir (basili tut = top al)
+     *    X (sol)         -> Hopper calistir (kayislari besle)
+     *    Y (ust)         -> Hopper ters (geriye al)
      *
      *  BUMPER / TRIGGER:
      *    RB              -> AprilTag donus hizalama (basili tut)
      *    RT              -> ATIS! (Shooter+Feeder+Hood+Hopper+IntakeArm)
-     *    LB              -> Intake kapat (arm stow pozisyonuna don)
-     *    LT              -> Climb asagi (-0.25)
+     *    LB              -> Intake ARM kapat (basili tut = -0.25)
+     *    LT              -> Climb yukari (+0.25)
      *
      *  D-PAD:
-     *    (bos - surus kontrolune karismaz)
+     *    D-Pad Up        -> Climb asagi (-0.25)
      *
      *  MENU:
      *    Back            -> Field-centric sifirla (heading reset)
@@ -223,13 +223,25 @@ public class RobotContainer {
             new AlignToAprilTag(drivetrain, "limelight", MaxSpeed, MaxAngularRate));
 
         // ==================================================================
-        // A -> INTAKE (arm pozisyona git + roller baslar)
+        // A -> Intake ARM ac (basili tut = +0.25, birak = dur)
         // ==================================================================
         joystick.a().whileTrue(
-            new IntakeCommand(intakeArm, intakeRoller));
+            Commands.startEnd(
+                () -> intakeArm.setSpeed(IntakeArmSubsystem.ARM_SPEED),   // +0.25
+                () -> intakeArm.stop(),
+                intakeArm));
 
         // ==================================================================
-        // LB -> Intake kapat (basili tut = arm -0.25 ile kapanir)
+        // B -> Intake ROLLER calistir (basili tut = top al)
+        // ==================================================================
+        joystick.b().whileTrue(
+            Commands.startEnd(
+                () -> intakeRoller.run(),
+                () -> intakeRoller.stop(),
+                intakeRoller));
+
+        // ==================================================================
+        // LB -> Intake ARM kapat (basili tut = -0.25, birak = dur)
         // ==================================================================
         joystick.leftBumper().whileTrue(
             Commands.startEnd(
@@ -238,27 +250,27 @@ public class RobotContainer {
                 intakeArm));
 
         // ==================================================================
-        // B -> Hopper calistir (kayislari besle)
+        // X -> Hopper calistir (kayislari besle)
         // ==================================================================
-        joystick.b().whileTrue(
+        joystick.x().whileTrue(
             Commands.startEnd(() -> hopper.run(), () -> hopper.stop(), hopper));
 
         // ==================================================================
-        // X -> Hopper ters (geriye al - top sikismasi vs.)
+        // Y -> Hopper ters (geriye al - top sikismasi vs.)
         // ==================================================================
-        joystick.x().whileTrue(
+        joystick.y().whileTrue(
             Commands.startEnd(() -> hopper.reverse(), () -> hopper.stop(), hopper));
 
         // ==================================================================
-        // Y -> Climb yukari (+0.25)
+        // LT -> Climb yukari (+0.25)
         // ==================================================================
-        joystick.y().whileTrue(
+        joystick.leftTrigger(0.5).whileTrue(
             new ClimbCommand(climb, ClimbCommand.Direction.UP));
 
         // ==================================================================
-        // LT -> Climb asagi (-0.25)
+        // D-Pad Up -> Climb asagi (-0.25)
         // ==================================================================
-        joystick.leftTrigger(0.5).whileTrue(
+        joystick.povUp().whileTrue(
             new ClimbCommand(climb, ClimbCommand.Direction.DOWN));
 
         // ==================================================================
