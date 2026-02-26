@@ -34,6 +34,7 @@ import frc.robot.subsystems.FeederSubsystem;
 import frc.robot.subsystems.HopperSubsystem;
 import frc.robot.subsystems.IntakeArmSubsystem;
 import frc.robot.subsystems.IntakeRollerSubsystem;
+
 import frc.robot.subsystems.ClimbSubsystem;
 import frc.robot.subsystems.VisionSubsystem;
 
@@ -228,10 +229,13 @@ public class RobotContainer {
             new IntakeCommand(intakeArm, intakeRoller));
 
         // ==================================================================
-        // LB -> Intake kapat (arm stow / baslangic pozisyonuna don)
+        // LB -> Intake kapat (basili tut = arm -0.25 ile kapanir)
         // ==================================================================
-        joystick.leftBumper().onTrue(
-            Commands.runOnce(() -> intakeArm.goToPosition(0.0), intakeArm));
+        joystick.leftBumper().whileTrue(
+            Commands.startEnd(
+                () -> intakeArm.setSpeed(-IntakeArmSubsystem.ARM_SPEED),  // -0.25
+                () -> intakeArm.stop(),
+                intakeArm));
 
         // ==================================================================
         // B -> Hopper calistir (kayislari besle)
