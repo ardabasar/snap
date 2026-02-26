@@ -116,6 +116,7 @@ public class ShootCommand extends Command {
         distanceSource = "INITIALIZING";
         loopCount = 0;
         LimelightHelpers.setLEDMode_ForceOn(limelightName);
+        System.out.println("[v0] ShootCommand STARTED");
     }
 
     @Override
@@ -124,6 +125,10 @@ public class ShootCommand extends Command {
 
         // 1) MESAFE
         currentDistance = getHubDistance();
+        if (loopCount % 50 == 1) {
+            System.out.println("[v0] Distance=" + currentDistance + " Source=" + distanceSource
+                + " RPM=" + currentRPM + " Hood=" + currentHoodPos);
+        }
 
         // 2) RPM + HOOD HESAPLA
         if (currentDistance < 0) {
