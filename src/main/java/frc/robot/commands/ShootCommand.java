@@ -72,8 +72,7 @@ public class ShootCommand extends Command {
     private static final double DEFAULT_RPM = 3200.0;
     private static final double DEFAULT_HOOD = 0.35;
 
-    /** Feeder RPM orani - shooter RPM'inin bu kadari feeder'a verilir */
-    private static final double FEEDER_RPM_RATIO = 0.6;
+    // Feeder WCP ile ayni: 5000 RPM sabit (FeederSubsystem.FEED_RPM)
 
     // ========================================================================
     // STATE
@@ -116,7 +115,6 @@ public class ShootCommand extends Command {
         distanceSource = "INITIALIZING";
         loopCount = 0;
         LimelightHelpers.setLEDMode_ForceOn(limelightName);
-        System.out.println("[v0] ShootCommand STARTED");
     }
 
     @Override
@@ -125,10 +123,6 @@ public class ShootCommand extends Command {
 
         // 1) MESAFE
         currentDistance = getHubDistance();
-        if (loopCount % 50 == 1) {
-            System.out.println("[v0] Distance=" + currentDistance + " Source=" + distanceSource
-                + " RPM=" + currentRPM + " Hood=" + currentHoodPos);
-        }
 
         // 2) RPM + HOOD HESAPLA
         if (currentDistance < 0) {
@@ -148,8 +142,8 @@ public class ShootCommand extends Command {
             // Shooter: 3 motor hedef RPM'e
             shooter.setTargetRPM(currentRPM);
 
-            // Feeder: Shooter ile ayni voltaj mantigi (RPM oranli)
-            feeder.setTargetRPM(currentRPM * FEEDER_RPM_RATIO);
+            // Feeder: WCP ile ayni - 5000 RPM sabit
+            feeder.feed();
 
             // Hood: Servo pozisyon
             hood.setPosition(currentHoodPos);

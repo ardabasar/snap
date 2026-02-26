@@ -1,8 +1,10 @@
 package frc.robot.subsystems;
 
+import static edu.wpi.first.units.Units.RPM;
+
 import com.ctre.phoenix6.hardware.TalonFX;
 import com.ctre.phoenix6.controls.VelocityVoltage;
-import com.ctre.phoenix6.controls.DutyCycleOut;
+import com.ctre.phoenix6.controls.VoltageOut;
 import com.ctre.phoenix6.configs.TalonFXConfiguration;
 import com.ctre.phoenix6.signals.NeutralModeValue;
 import com.ctre.phoenix6.signals.InvertedValue;
@@ -68,7 +70,7 @@ public class ShooterSubsystem extends SubsystemBase {
     private final TalonFX motor3;  // CAN 11, -1 yon
 
     private final VelocityVoltage velocityRequest = new VelocityVoltage(0).withSlot(0);
-    private final DutyCycleOut stopRequest = new DutyCycleOut(0);
+    private final VoltageOut voltageRequest = new VoltageOut(0);
 
     // ========================================================================
     // TELEMETRI
@@ -153,31 +155,39 @@ public class ShooterSubsystem extends SubsystemBase {
     // KONTROL
     // ========================================================================
 
-    /** Shooter'i hedef RPM'de calistirir (3 motor birlikte). */
+    /** Shooter'i hedef RPM'de calistirir (3 motor birlikte).
+     *  WCP ile birebir ayni: velocityRequest.withVelocity(RPM.of(rpm)) */
     public void setTargetRPM(double rpm) {
         targetRPM = Math.abs(rpm);
         running = true;
-        double targetRPS = targetRPM / 60.0;
-        motor1.setControl(velocityRequest.withVelocity(targetRPS));
-        motor2.setControl(velocityRequest.withVelocity(targetRPS));
-        motor3.setControl(velocityRequest.withVelocity(targetRPS));
+        // WCP: RPM.of(rpm) Units API kullanarak RPM gonderiyor
+        motor1.setControl(velocityRequest.withVelocity(RPM.of(targetRPM)));
+        motor2.setControl(velocityRequest.withVelocity(RPM.of(targetRPM)));
+        motor3.setControl(velocityRequest.withVelocity(RPM.of(targetRPM)));
     }
 
-    /** Shooter'i durdurur. */
+    /** Percent output ile calistirir (WCP setPercentOutput ile ayni) */
+    public void setPercentOutput(double percent) {
+        running = percent != 0;
+        targetRPM = 0;
+        motor1.setControl(voltageRequest.withOutput(percent * 12.0));
+        motor2.setControl(voltageRequest.withOutput(percent * 12.0));
+        motor3.setControl(voltageRequest.withOutput(percent * 12.0));
+    }
+
+    /** Shooter'i durdurur. WCP ile ayni: setPercentOutput(0). */
     public void stop() {
         targetRPM = 0.0;
         running = false;
-        motor1.setControl(stopRequest.withOutput(0));
-        motor2.setControl(stopRequest.withOutput(0));
-        motor3.setControl(stopRequest.withOutput(0));
+        setPercentOutput(0.0);
     }
 
     // ========================================================================
     // GETTER'LAR
     // ========================================================================
-    public double getMotor1RPM() { return Math.abs(vel1Signal.refresh().getValueAsDouble()) * 60.0; }
-    public double getMotor2RPM() { return Math.abs(vel2Signal.refresh().getValueAsDouble()) * 60.0; }
-    public double getMotor3RPM() { return Math.abs(vel3Signal.refresh().getValueAsDouble()) * 60.0; }
+    public double getMotor1RPM() { return Math.abs(vel1Signal.refresh().getValue().in(RPM)); }
+    public double getMotor2RPM() { return Math.abs(vel2Signal.refresh().getValue().in(RPM)); }
+    public double getMotor3RPM() { return Math.abs(vel3Signal.refresh().getValue().in(RPM)); }
     public double getAverageRPM() { return (getMotor1RPM() + getMotor2RPM() + getMotor3RPM()) / 3.0; }
     public double getTargetRPM() { return targetRPM; }
     public boolean isRunning() { return running; }

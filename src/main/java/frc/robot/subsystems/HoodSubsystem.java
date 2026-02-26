@@ -1,5 +1,6 @@
 package frc.robot.subsystems;
 
+import edu.wpi.first.math.MathUtil;
 import edu.wpi.first.wpilibj.Servo;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
@@ -47,14 +48,14 @@ public class HoodSubsystem extends SubsystemBase {
     // SABITLER
     // ========================================================================
 
-    /** Servo minimum pozisyonu (en dusuk aci) */
-    public static final double MIN_POSITION = 0.0;
+    /** Servo minimum pozisyonu - WCP: 0.01 */
+    public static final double MIN_POSITION = 0.01;
 
-    /** Servo maximum pozisyonu (en yuksek aci) */
+    /** Servo maximum pozisyonu - WCP: 0.77 */
     public static final double MAX_POSITION = 0.77;
 
-    /** Varsayilan pozisyon (baslangic/idle) */
-    public static final double DEFAULT_POSITION = 0.0;
+    /** Varsayilan pozisyon (baslangic/idle) - WCP: 0.5 */
+    public static final double DEFAULT_POSITION = 0.5;
 
     /** Pozisyon toleransi */
     private static final double POSITION_TOLERANCE = 0.02;
@@ -100,7 +101,7 @@ public class HoodSubsystem extends SubsystemBase {
      * @param position 0.0 (dusuk aci) - MAX_POSITION (yuksek aci)
      */
     public void setPosition(double position) {
-        targetPosition = Math.max(MIN_POSITION, Math.min(MAX_POSITION, position));
+        targetPosition = MathUtil.clamp(position, MIN_POSITION, MAX_POSITION);
         leftServo.set(targetPosition);
         rightServo.set(targetPosition);
     }
