@@ -1,7 +1,6 @@
 package frc.robot.subsystems;
 
 import com.ctre.phoenix6.hardware.TalonFX;
-import com.ctre.phoenix6.controls.VelocityVoltage;
 import com.ctre.phoenix6.controls.DutyCycleOut;
 import com.ctre.phoenix6.configs.TalonFXConfiguration;
 import com.ctre.phoenix6.signals.NeutralModeValue;
@@ -14,40 +13,33 @@ import edu.wpi.first.wpilibj2.command.SubsystemBase;
 
 /**
  * ============================================================================
- * FEEDER SUBSYSTEM - 2026 REBUILT
+ * HOPPER SUBSYSTEM - 2026 REBUILT
  * ============================================================================
- * Shooter'in agzina toplari besleyen motor.
- * Shooter ile BIRLIKTE calisir - voltaj mantigi ile baglantilidirlar.
+ * Alttaki kayis sistemi - toplari surekli shooter'a besler.
  *
  * Donanim:
- *   - Motor: CAN 15 (rio bus)
+ *   - Motor: CAN 14 (rio bus)
+ *   - -1 tarafina dogru calisir
  *   - Brake mode
  *
  * Kontrol:
- *   - Shooter ile ayni voltaj/hiz mantigiyla calisir
- *   - ShootCommand tarafindan shooter ile senkron baslatilir
- *   - VelocityVoltage kullanilabilir (shooter PID ile eslesir)
+ *   - -0.25 hizda surekli calisir (shooter beslemesi)
+ *   - -1 yonunde kayislari calistirir
  * ============================================================================
  */
-public class FeederSubsystem extends SubsystemBase {
+public class HopperSubsystem extends SubsystemBase {
 
     // ========================================================================
     // CAN ID
     // ========================================================================
-    public static final int MOTOR_CAN_ID = 15;
+    public static final int MOTOR_CAN_ID = 14;
     public static final String CAN_BUS   = "rio";
 
     // ========================================================================
-    // PID (Shooter ile benzer voltaj mantigi)
+    // SABITLER
     // ========================================================================
-    private static final double kP = 0.15;
-    private static final double kI = 0.0;
-    private static final double kD = 0.0;
-    private static final double kV = 0.12;
-    private static final double kS = 0.05;
-
-    /** Varsayilan besleme hizi (DutyCycle fallback) */
-    public static final double DEFAULT_SPEED = 0.3;
+    /** Hopper calisme hizi (-1 yone dogru, bu yuzden negatif) */
+    public static final double HOPPER_SPEED = -0.25;
 
     /** Stator akim limiti */
     private static final double STATOR_CURRENT_LIMIT = 40.0;
@@ -56,7 +48,6 @@ public class FeederSubsystem extends SubsystemBase {
     // DONANIM
     // ========================================================================
     private final TalonFX motor;
-    private final VelocityVoltage velocityRequest = new VelocityVoltage(0).withSlot(0);
     private final DutyCycleOut dutyCycleRequest = new DutyCycleOut(0);
 
     // ========================================================================
@@ -69,14 +60,13 @@ public class FeederSubsystem extends SubsystemBase {
     // STATE
     // ========================================================================
     private double targetSpeed = 0.0;
-    private boolean usingVelocity = false;
     private static final int DASHBOARD_INTERVAL = 10;
     private int loopCount = 0;
 
     // ========================================================================
     // CONSTRUCTOR
     // ========================================================================
-    public FeederSubsystem() {
+    public HopperSubsystem() {
         motor = new TalonFX(MOTOR_CAN_ID, CAN_BUS);
         configureMotor();
 
@@ -84,7 +74,7 @@ public class FeederSubsystem extends SubsystemBase {
         currentSignal  = motor.getStatorCurrent();
 
         stop();
-        System.out.println("[Feeder] Initialized - CAN " + MOTOR_CAN_ID);
+        System.out.println("[Hopper] Initialized - CAN " + MOTOR_CAN_ID);
     }
 
     // ========================================================================
@@ -93,11 +83,6 @@ public class FeederSubsystem extends SubsystemBase {
     private void configureMotor() {
         TalonFXConfiguration config = new TalonFXConfiguration();
         config.MotorOutput.NeutralMode = NeutralModeValue.Brake;
-        config.Slot0.kP = kP;
-        config.Slot0.kI = kI;
-        config.Slot0.kD = kD;
-        config.Slot0.kV = kV;
-        config.Slot0.kS = kS;
         config.CurrentLimits.StatorCurrentLimitEnable = true;
         config.CurrentLimits.StatorCurrentLimit = STATOR_CURRENT_LIMIT;
         motor.getConfigurator().apply(config);
@@ -107,39 +92,27 @@ public class FeederSubsystem extends SubsystemBase {
     // KONTROL
     // ========================================================================
 
-    /**
-     * Feeder'i shooter ile ayni voltaj mantigiyla RPM bazli calistirir.
-     * Shooter RPM'inin bir oraninda calismasi icin.
-     * @param rpm Hedef RPM
-     */
-    public void setTargetRPM(double rpm) {
-        usingVelocity = true;
-        targetSpeed = rpm;
-        double rps = Math.abs(rpm) / 60.0;
-        motor.setControl(velocityRequest.withVelocity(rps));
+    /** Hopper'i varsayilan hizda calistirir (-0.25, -1 yone dogru). */
+    public void run() {
+        targetSpeed = HOPPER_SPEED;
+        motor.setControl(dutyCycleRequest.withOutput(targetSpeed));
     }
 
-    /** Feeder'i DutyCycle ile calistirir. */
+    /** Hopper'i belirtilen hizda calistirir. */
     public void setSpeed(double speed) {
-        usingVelocity = false;
         targetSpeed = Math.max(-1.0, Math.min(1.0, speed));
         motor.setControl(dutyCycleRequest.withOutput(targetSpeed));
     }
 
-    /** Feeder'i varsayilan hizda besler. */
-    public void feed() {
-        setSpeed(DEFAULT_SPEED);
-    }
-
-    /** Feeder'i ters calistirir. */
+    /** Hopper'i ters calistirir. */
     public void reverse() {
-        setSpeed(-DEFAULT_SPEED);
+        targetSpeed = -HOPPER_SPEED; // +0.25
+        motor.setControl(dutyCycleRequest.withOutput(targetSpeed));
     }
 
-    /** Feeder'i durdurur. */
+    /** Hopper'i durdurur. */
     public void stop() {
         targetSpeed = 0.0;
-        usingVelocity = false;
         motor.setControl(dutyCycleRequest.withOutput(0));
     }
 
@@ -147,8 +120,8 @@ public class FeederSubsystem extends SubsystemBase {
     // GETTER'LAR
     // ========================================================================
     public double getVelocityRPS() { return velocitySignal.refresh().getValueAsDouble(); }
-    public double getTargetSpeed() { return targetSpeed; }
     public boolean isActive() { return Math.abs(targetSpeed) > 0.01; }
+    public double getTargetSpeed() { return targetSpeed; }
 
     // ========================================================================
     // PERIODIC
@@ -158,9 +131,9 @@ public class FeederSubsystem extends SubsystemBase {
         loopCount++;
         if (loopCount % DASHBOARD_INTERVAL != 0) return;
 
-        SmartDashboard.putNumber("Feeder/VelocityRPS", Math.round(getVelocityRPS() * 100.0) / 100.0);
-        SmartDashboard.putNumber("Feeder/Current", Math.round(currentSignal.refresh().getValueAsDouble() * 10.0) / 10.0);
-        SmartDashboard.putNumber("Feeder/TargetSpeed", targetSpeed);
-        SmartDashboard.putBoolean("Feeder/Active", isActive());
+        SmartDashboard.putNumber("Hopper/VelocityRPS", Math.round(getVelocityRPS() * 100.0) / 100.0);
+        SmartDashboard.putNumber("Hopper/Current", Math.round(currentSignal.refresh().getValueAsDouble() * 10.0) / 10.0);
+        SmartDashboard.putNumber("Hopper/Speed", targetSpeed);
+        SmartDashboard.putBoolean("Hopper/Active", isActive());
     }
 }

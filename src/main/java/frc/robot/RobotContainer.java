@@ -18,36 +18,39 @@ import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
 import edu.wpi.first.wpilibj2.command.button.RobotModeTriggers;
 
 import frc.robot.commands.AlignToAprilTag;
-import frc.robot.commands.ElevatorCommand;
-import frc.robot.commands.StructureCommand;
-import frc.robot.commands.FeederCommand;
 import frc.robot.commands.ShootCommand;
+import frc.robot.commands.IntakeCommand;
+import frc.robot.commands.ClimbCommand;
 import frc.robot.commands.auto.AutoAlignToTagCommand;
 import frc.robot.commands.auto.TrackAprilTag;
 import frc.robot.commands.auto.VisionAutoSeedCommand;
 import frc.robot.generated.TunerConstants;
 import frc.robot.subsystems.CommandSwerveDrivetrain;
-import frc.robot.subsystems.ElevatorSubsystem;
-import frc.robot.subsystems.StructureSubsystem;
 import frc.robot.subsystems.ShooterSubsystem;
 import frc.robot.subsystems.HoodSubsystem;
 import frc.robot.subsystems.FeederSubsystem;
+import frc.robot.subsystems.HopperSubsystem;
+import frc.robot.subsystems.IntakeArmSubsystem;
+import frc.robot.subsystems.IntakeRollerSubsystem;
+import frc.robot.subsystems.ClimbSubsystem;
 import frc.robot.subsystems.VisionSubsystem;
 
 /**
  * ============================================================================
- * ROBOT CONTAINER - WCP Big Dumper 2026 REBUILT
+ * ROBOT CONTAINER - 2026 REBUILT
  * ============================================================================
  * Tum subsystem'lerin ve command binding'lerinin merkezi.
  *
  * SUBSYSTEM'LER:
  *   - CommandSwerveDrivetrain: 4 modul swerve (Caracal CANivore, CAN 1-8)
  *   - VisionSubsystem: Limelight MegaTag2 lokalizasyon
- *   - ElevatorSubsystem: 2x TalonFX leader-follower (CAN 9-10)
- *   - StructureSubsystem: 2x TalonFX leader-follower (CAN 11-12)
- *   - ShooterSubsystem: 3x TalonFX VelocityVoltage PID (CAN 13-14-15)
+ *   - ShooterSubsystem: 3x TalonFX (CAN 9 +yon, CAN 10-11 -yon)
+ *   - IntakeArmSubsystem: 1x TalonFX encoder pozisyon (CAN 12)
+ *   - IntakeRollerSubsystem: 1x TalonFX roller (CAN 13)
+ *   - HopperSubsystem: 1x TalonFX kayis (CAN 14)
+ *   - FeederSubsystem: 1x TalonFX shooter beslemesi (CAN 15)
+ *   - ClimbSubsystem: 1x TalonFX asma (CAN 16)
  *   - HoodSubsystem: 2x Servo pozisyon (PWM 3-4)
- *   - FeederSubsystem: 1x TalonFX DutyCycle (CAN 16)
  *
  * CAN ID HARITASI:
  *   CANivore "Caracal" bus:
@@ -56,16 +59,14 @@ import frc.robot.subsystems.VisionSubsystem;
  *     CANcoders:        9, 10, 11, 12
  *     Pigeon2:          13
  *   rio bus:
- *     Elevator:         9 (leader), 10 (follower)
- *     Structure:        11 (leader), 12 (follower)
- *     Shooter:          13 (sol), 14 (orta), 15 (sag)
- *     Feeder:           16
+ *     Shooter:          9 (+1 yon), 10 (-1 yon), 11 (-1 yon)
+ *     Intake Arm:       12 (kol, encoder pozisyon)
+ *     Intake Roller:    13 (silindir, 0.5 hiz)
+ *     Hopper:           14 (kayis, -0.25 hiz)
+ *     Feeder:           15 (shooter beslemesi, voltaj mantigi)
+ *     Climb:            16 (+/-0.25 hiz)
  *   PWM:
  *     Hood servolar:    3 (sol), 4 (sag)
- *
- * NOT: Feeder ayri buton degildir!
- * RT'ye basinca Shooter + Hood + Feeder birlikte calisir.
- * Buton birakilinca hepsi durur, hood servolari sifira doner.
  * ============================================================================
  */
 public class RobotContainer {
@@ -95,12 +96,14 @@ public class RobotContainer {
     // SUBSYSTEM'LER
     // ========================================================================
     public final CommandSwerveDrivetrain drivetrain = TunerConstants.createDrivetrain();
-    private final VisionSubsystem vision       = new VisionSubsystem(drivetrain, "limelight");
-    private final ElevatorSubsystem elevator   = new ElevatorSubsystem();
-    private final StructureSubsystem structure = new StructureSubsystem();
-    private final ShooterSubsystem shooter     = new ShooterSubsystem();
-    private final HoodSubsystem hood           = new HoodSubsystem();
-    private final FeederSubsystem feeder       = new FeederSubsystem();
+    private final VisionSubsystem vision         = new VisionSubsystem(drivetrain, "limelight");
+    private final ShooterSubsystem shooter       = new ShooterSubsystem();
+    private final HoodSubsystem hood             = new HoodSubsystem();
+    private final FeederSubsystem feeder         = new FeederSubsystem();
+    private final HopperSubsystem hopper         = new HopperSubsystem();
+    private final IntakeArmSubsystem intakeArm   = new IntakeArmSubsystem();
+    private final IntakeRollerSubsystem intakeRoller = new IntakeRollerSubsystem();
+    private final ClimbSubsystem climb           = new ClimbSubsystem();
 
     // ========================================================================
     // OTONOM
@@ -122,33 +125,18 @@ public class RobotContainer {
     // NAMED COMMANDS (PathPlanner Otonom icin)
     // ========================================================================
     private void registerNamedCommands() {
-        // Atis: Shooter + Hood + Feeder (shooter hazir olunca feeder baslar)
+        // Atis: Shooter + Hood + Feeder + Hopper + IntakeArm birlikte
         NamedCommands.registerCommand("shoot",
-            new ShootCommand(shooter, hood, feeder, vision, "limelight").withTimeout(3.0));
+            new ShootCommand(shooter, hood, feeder, hopper, intakeArm, vision, "limelight")
+                .withTimeout(3.0));
 
-        // Feeder: Toplari shooter'a besle
-        NamedCommands.registerCommand("feed",
-            new FeederCommand(feeder, FeederCommand.Direction.FEED).withTimeout(2.0));
+        // Intake: Arm + Roller
+        NamedCommands.registerCommand("intake",
+            new IntakeCommand(intakeArm, intakeRoller).withTimeout(3.0));
 
-        // Feeder ters: Top cikarma
-        NamedCommands.registerCommand("feedReverse",
-            new FeederCommand(feeder, FeederCommand.Direction.REVERSE).withTimeout(2.0));
-
-        // Elevator yukari
-        NamedCommands.registerCommand("elevatorUp",
-            new ElevatorCommand(elevator, ElevatorCommand.Direction.UP).withTimeout(3.0));
-
-        // Elevator asagi
-        NamedCommands.registerCommand("elevatorDown",
-            new ElevatorCommand(elevator, ElevatorCommand.Direction.DOWN).withTimeout(3.0));
-
-        // Structure ileri (toplari besle)
-        NamedCommands.registerCommand("structureForward",
-            new StructureCommand(structure, StructureCommand.Direction.FORWARD).withTimeout(3.0));
-
-        // Structure geri
-        NamedCommands.registerCommand("structureReverse",
-            new StructureCommand(structure, StructureCommand.Direction.REVERSE).withTimeout(3.0));
+        // Hopper calistir
+        NamedCommands.registerCommand("hopperRun",
+            Commands.startEnd(() -> hopper.run(), () -> hopper.stop(), hopper).withTimeout(3.0));
 
         // Hizalama
         NamedCommands.registerCommand("alignToTag",
@@ -161,7 +149,7 @@ public class RobotContainer {
 
     /*
      * ========================================================================
-     * XBOX CONTROLLER BUTON HARITASI
+     * XBOX CONTROLLER BUTON HARITASI - 2026 REBUILT
      * ========================================================================
      *
      *  STICKS:
@@ -169,26 +157,22 @@ public class RobotContainer {
      *    Sag Stick X     -> Donus (rotation)
      *
      *  FACE BUTONLARI:
-     *    A (alt)         -> Elevator asagi (0.25 hiz, basili tut)
-     *    B (sag)         -> Structure ileri - toplari besle (basili tut)
-     *    X (sol)         -> Structure geri (basili tut)
-     *    Y (ust)         -> Elevator yukari (0.25 hiz, basili tut)
+     *    A (alt)         -> INTAKE (arm pozisyona git + roller 0.5 hiz)
+     *    B (sag)         -> Hopper calistir (-0.25, kayislari besle)
+     *    X (sol)         -> Hopper ters (+0.25, geriye al)
+     *    Y (ust)         -> Climb yukari (+0.25)
      *
      *  BUMPER / TRIGGER:
      *    LB              -> Field-centric sifirla (heading reset)
      *    RB              -> AprilTag donus hizalama (basili tut)
-     *    RT              -> ATIS! Shooter + Hood + Feeder birlikte
-     *                       (Limelight mesafe -> RPM + aci, feeder otomatik)
+     *    RT              -> ATIS! (Shooter + Feeder + Hood + Hopper + IntakeArm)
      *    LT              -> Surekli AprilTag takibi (basili tut)
      *
      *  D-PAD:
-     *    (bos - gelecek mekanizmalar icin)
+     *    D-PAD Up        -> Climb yukari (+0.25)
+     *    D-PAD Down      -> Climb asagi (-0.25)
      *
-     *  MENU:
-     *    Start           -> (bos)
-     *    Back            -> (bos)
-     *
-     *  VISION: HER ZAMAN ACIK - robot acilir acilmaz konum tespit eder
+     *  VISION: HER ZAMAN ACIK
      *
      * ========================================================================
      */
@@ -196,8 +180,6 @@ public class RobotContainer {
 
         // ==================================================================
         // SWERVE SURME (varsayilan komut)
-        // Sol stick X/Y -> field-centric hareket
-        // Sag stick X   -> donus
         // ==================================================================
         drivetrain.setDefaultCommand(
             drivetrain.applyRequest(() -> drive
@@ -209,39 +191,45 @@ public class RobotContainer {
             drivetrain.applyRequest(() -> new SwerveRequest.Idle()).ignoringDisable(true));
 
         // ==================================================================
-        // RT (Sag Trigger) -> ATIS KOMUTU (ShootCommand)
-        //   1) Limelight ile hub mesafesi olculur
-        //   2) Mesafeye gore RPM + hood acisi enterpolasyonla belirlenir
-        //   3) Shooter motorlari hedef RPM'e hizlanir
-        //   4) Shooter HAZIR olunca -> Feeder otomatik baslar (0.25 hiz)
-        //   5) Buton birakilinca hepsi durur, hood sifira doner
+        // RT (Sag Trigger) -> ATIS KOMUTU
+        //   Shooter (CAN 9,10,11) + Feeder (CAN 15) + Hood (PWM 3,4)
+        //   + Hopper (CAN 14) + IntakeArm (CAN 12) yarim hizda
+        //   Hepsi birlikte calisir, mesafe bazli voltaj/RPM
         // ==================================================================
         joystick.rightTrigger(0.5).whileTrue(
-            new ShootCommand(shooter, hood, feeder, vision, "limelight"));
+            new ShootCommand(shooter, hood, feeder, hopper, intakeArm, vision, "limelight"));
 
         // ==================================================================
-        // Y (ust) -> Elevator yukari (0.25 hiz, basili tutulunca)
-        // ==================================================================
-        joystick.y().whileTrue(
-            new ElevatorCommand(elevator, ElevatorCommand.Direction.UP));
-
-        // ==================================================================
-        // A (alt) -> Elevator asagi (0.25 hiz, basili tutulunca)
+        // A (alt) -> INTAKE (arm + roller)
+        //   Arm (CAN 12) hedef pozisyona gider
+        //   Roller (CAN 13) arm pozisyona gelince 0.5 hizda baslar
         // ==================================================================
         joystick.a().whileTrue(
-            new ElevatorCommand(elevator, ElevatorCommand.Direction.DOWN));
+            new IntakeCommand(intakeArm, intakeRoller));
 
         // ==================================================================
-        // B (sag) -> Structure ileri (toplari shooter'a besle)
+        // B (sag) -> Hopper calistir (-0.25 hiz, kayislari besle)
         // ==================================================================
         joystick.b().whileTrue(
-            new StructureCommand(structure, StructureCommand.Direction.FORWARD));
+            Commands.startEnd(() -> hopper.run(), () -> hopper.stop(), hopper));
 
         // ==================================================================
-        // X (sol) -> Structure geri
+        // X (sol) -> Hopper ters (+0.25 hiz, geri al)
         // ==================================================================
         joystick.x().whileTrue(
-            new StructureCommand(structure, StructureCommand.Direction.REVERSE));
+            Commands.startEnd(() -> hopper.reverse(), () -> hopper.stop(), hopper));
+
+        // ==================================================================
+        // D-PAD Up -> Climb yukari (+0.25)
+        // ==================================================================
+        joystick.povUp().whileTrue(
+            new ClimbCommand(climb, ClimbCommand.Direction.UP));
+
+        // ==================================================================
+        // D-PAD Down -> Climb asagi (-0.25)
+        // ==================================================================
+        joystick.povDown().whileTrue(
+            new ClimbCommand(climb, ClimbCommand.Direction.DOWN));
 
         // ==================================================================
         // RB -> AprilTag donus hizalama (basili tut)
@@ -261,26 +249,13 @@ public class RobotContainer {
         joystick.leftBumper().onTrue(drivetrain.runOnce(drivetrain::seedFieldCentric));
 
         // ==================================================================
-        // D-PAD -> Bos (Vision artik HER ZAMAN ACIK, toggle yok)
-        // Gelecekte baska mekanizma eklenebilir.
-        // ==================================================================
-
-        // ==================================================================
         // TELEMETRI
         // ==================================================================
         drivetrain.registerTelemetry(logger::telemeterize);
     }
 
     /**
-     * ============================================================================
-     * AUTONOMOUS COMMAND - VISION SEED DESTEKLI
-     * ============================================================================
-     * Sira:
-     *   1) VisionAutoSeedCommand: Limelight ile AprilTag'leri gorup robotun
-     *      gercek saha pozisyonunu tespit eder (max 0.75 sn)
-     *   2) PathPlanner Auto: Secilen otonom rutini calisir. PathPlanner'in
-     *      resetPose cagrisi IGNORE edilir cunku vision zaten gercek pozisyonu
-     *      seed etmistir.
+     * Autonomous command - vision seed destekli.
      */
     public Command getAutonomousCommand() {
         Command selected = autoChooser.getSelected();
@@ -297,9 +272,11 @@ public class RobotContainer {
     // ========================================================================
     public CommandSwerveDrivetrain getDrivetrain() { return drivetrain; }
     public VisionSubsystem getVision() { return vision; }
-    public ElevatorSubsystem getElevator() { return elevator; }
-    public StructureSubsystem getStructure() { return structure; }
     public ShooterSubsystem getShooter() { return shooter; }
     public HoodSubsystem getHood() { return hood; }
     public FeederSubsystem getFeeder() { return feeder; }
+    public HopperSubsystem getHopper() { return hopper; }
+    public IntakeArmSubsystem getIntakeArm() { return intakeArm; }
+    public IntakeRollerSubsystem getIntakeRoller() { return intakeRoller; }
+    public ClimbSubsystem getClimb() { return climb; }
 }
