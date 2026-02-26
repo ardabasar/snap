@@ -9,6 +9,9 @@ import com.pathplanner.lib.auto.AutoBuilder;
 import com.pathplanner.lib.auto.NamedCommands;
 import com.pathplanner.lib.commands.FollowPathCommand;
 
+import edu.wpi.first.cameraserver.CameraServer;
+import edu.wpi.first.cscore.HttpCamera;
+import edu.wpi.first.cscore.HttpCamera.HttpCameraKind;
 import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
@@ -114,6 +117,15 @@ public class RobotContainer {
     // CONSTRUCTOR
     // ========================================================================
     public RobotContainer() {
+        // Limelight kamera stream'ini dashboard'a gonder
+        // Elastic'te "CameraServer" -> "limelight" olarak gorunur
+        HttpCamera limelightCamera = new HttpCamera(
+            "limelight",
+            "http://10.95.45.11:5800/stream.mjpg",
+            HttpCameraKind.kMJPGStreamer
+        );
+        CameraServer.startAutomaticCapture(limelightCamera);
+
         registerNamedCommands();
         autoChooser = AutoBuilder.buildAutoChooser("Tests");
         SmartDashboard.putData("Auto Mode", autoChooser);

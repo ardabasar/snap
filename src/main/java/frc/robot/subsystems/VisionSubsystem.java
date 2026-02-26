@@ -80,6 +80,14 @@ public class VisionSubsystem extends SubsystemBase {
     private static final int ALLIANCE_CHECK_INTERVAL = 250;
 
     // ========================================================================
+    // LIMELIGHT KAMERA STREAM - Elastic Dashboard'da canli goruntu
+    // ========================================================================
+    // Elastic'te "CameraServer" tablosundan otomatik gorunur.
+    // Veya manuel: + -> CameraStream widget ekle
+    // Limelight varsayilan MJPEG stream: http://limelight.local:5800/stream.mjpg
+    // ========================================================================
+
+    // ========================================================================
     // FIELD2D - Elastic Dashboard icin saha gorunumu
     // ========================================================================
     private final Field2d field2d = new Field2d();
@@ -257,8 +265,19 @@ public class VisionSubsystem extends SubsystemBase {
         this.drivetrain    = drivetrain;
         this.limelightName = limelightName;
 
-        // Field2d widget'ini SmartDashboard'a kaydet - Elastic bunu otomatik bulur
-        SmartDashboard.putData("Field", field2d);
+    // Field2d widget'ini SmartDashboard'a kaydet - Elastic bunu otomatik bulur
+    SmartDashboard.putData("Field", field2d);
+
+    // Limelight kamera stream'ini CameraServer uzerinden Elastic'e kaydet
+    // Elastic'te: + -> CameraStream widget'i otomatik olarak bu URL'yi bulur
+    // Ayrica NetworkTables uzerinden de publish ediyoruz
+    String streamUrl = "http://" + limelightName + ".local:5800/stream.mjpg";
+    var cameraTable = ntInst.getTable("CameraPublisher").getSubTable(limelightName);
+    cameraTable.getEntry("streams").setStringArray(new String[]{
+        "mjpg:" + streamUrl
+    });
+    // Elastic icin SmartDashboard'a da URL'yi yaz
+    SmartDashboard.putString("limelight/StreamURL", streamUrl);
     }
 
     public void setEnabled(boolean enabled) {
