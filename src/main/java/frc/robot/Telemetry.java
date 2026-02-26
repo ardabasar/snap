@@ -70,34 +70,40 @@ public class Telemetry {
             SmartDashboard.putData("Module " + i, m_moduleMechanisms[i]);
         }
 
-        /* Elastic Dashboard SwerveDrive widget - ustten gorunus sase animasyonu */
+        /* Elastic Dashboard SwerveDrive widget - ustten gorunus sase animasyonu.
+         * Modul acilari robot-relative (robotun kendi eksenine gore).
+         * Robot Angle = robotun saha uzerindeki heading'i (field-relative).
+         * Elastic bu ikisini birlestirerek field-relative gorunum saglar.
+         * NOT: Elastic SwerveDrive widget'i acilari DERECE cinsinden ister,
+         * radian degil! getRadians() yerine getDegrees() kullanilmali.
+         */
         SmartDashboard.putData("Swerve Drive", new Sendable() {
             @Override
             public void initSendable(SendableBuilder builder) {
                 builder.setSmartDashboardType("SwerveDrive");
 
                 builder.addDoubleProperty("Front Left Angle",
-                    () -> m_cachedStates[0].angle.getRadians(), null);
+                    () -> m_cachedStates[0].angle.getDegrees(), null);
                 builder.addDoubleProperty("Front Left Velocity",
                     () -> m_cachedStates[0].speedMetersPerSecond, null);
 
                 builder.addDoubleProperty("Front Right Angle",
-                    () -> m_cachedStates[1].angle.getRadians(), null);
+                    () -> m_cachedStates[1].angle.getDegrees(), null);
                 builder.addDoubleProperty("Front Right Velocity",
                     () -> m_cachedStates[1].speedMetersPerSecond, null);
 
                 builder.addDoubleProperty("Back Left Angle",
-                    () -> m_cachedStates[2].angle.getRadians(), null);
+                    () -> m_cachedStates[2].angle.getDegrees(), null);
                 builder.addDoubleProperty("Back Left Velocity",
                     () -> m_cachedStates[2].speedMetersPerSecond, null);
 
                 builder.addDoubleProperty("Back Right Angle",
-                    () -> m_cachedStates[3].angle.getRadians(), null);
+                    () -> m_cachedStates[3].angle.getDegrees(), null);
                 builder.addDoubleProperty("Back Right Velocity",
                     () -> m_cachedStates[3].speedMetersPerSecond, null);
 
                 builder.addDoubleProperty("Robot Angle",
-                    () -> m_cachedRobotAngle, null);
+                    () -> Math.toDegrees(m_cachedRobotAngle), null);
             }
         });
     }
