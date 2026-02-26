@@ -52,8 +52,8 @@ public class IntakeArmSubsystem extends SubsystemBase {
      */
     public static double INTAKE_POSITION = 0.0; // <<< DEGER BURAYA GIRILECEK
 
-    /** Kol hareket hizi (DutyCycle) */
-    public static double ARM_SPEED = 0.3;
+    /** Kol hareket hizi (DutyCycle) - her iki yonde 0.25 */
+    public static double ARM_SPEED = 0.25;
 
     /** Kol pozisyon toleransi (rotasyon cinsinden) */
     public static final double POSITION_TOLERANCE = 0.5;
