@@ -103,7 +103,7 @@ public class Telemetry {
                     () -> m_cachedStates[3].speedMetersPerSecond, null);
 
                 builder.addDoubleProperty("Robot Angle",
-                    () -> Math.toDegrees(m_cachedRobotAngle), null);
+                    () -> -Math.toDegrees(m_cachedRobotAngle), null);
             }
         });
     }

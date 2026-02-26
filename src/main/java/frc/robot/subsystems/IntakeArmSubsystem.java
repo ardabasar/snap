@@ -44,12 +44,19 @@ public class IntakeArmSubsystem extends SubsystemBase {
     // SABITLER
     // ========================================================================
 
-    /** Intake kolunun hedef pozisyonu (rotor rotation cinsinden) */
-    // SAHADA KALIBRE EDILECEK - su an ornek deger
-    public static final double INTAKE_POSITION = 5.0;
+    /**
+     * SAHADA KALIBRE EDILECEK DEGERLER:
+     * 1) Robotu ac, Elastic dashboard'dan IntakeArm/Position degerini izle
+     * 2) Kolu elle istenen pozisyona getir
+     * 3) Dashboard'daki encoder degerini oku
+     * 4) O degeri asagiya yaz
+     *
+     * Su anki deger PLACEHOLDER - gercek deger sahada belirlenir!
+     */
+    public static double INTAKE_POSITION = 5.0;
 
-    /** Kol hareket hizi (DutyCycle) */
-    public static final double ARM_SPEED = 0.3;
+    /** Kol hareket hizi (DutyCycle) - sahada ayarlanabilir */
+    public static double ARM_SPEED = 0.3;
 
     /** Kol pozisyon toleransi (rotasyon cinsinden) */
     public static final double POSITION_TOLERANCE = 0.5;
@@ -90,8 +97,14 @@ public class IntakeArmSubsystem extends SubsystemBase {
         motor.setPosition(0.0);
 
         stop();
+
+        // Kalibrasyon degerleri - Elastic'ten canli degistirilebilir
+        SmartDashboard.putNumber("IntakeArm/INTAKE_POSITION", INTAKE_POSITION);
+        SmartDashboard.putNumber("IntakeArm/ARM_SPEED", ARM_SPEED);
+
         System.out.println("[IntakeArm] Initialized - CAN " + MOTOR_CAN_ID
-            + " | Encoder sifirlandi");
+            + " | Encoder sifirlandi"
+            + " | INTAKE_POSITION=" + INTAKE_POSITION + " (SAHADA KALIBRE ET!)");
     }
 
     // ========================================================================
@@ -156,6 +169,10 @@ public class IntakeArmSubsystem extends SubsystemBase {
     public void periodic() {
         loopCount++;
         if (loopCount % DASHBOARD_INTERVAL != 0) return;
+
+        // Elastic'ten canli kalibrasyon degeri oku
+        INTAKE_POSITION = SmartDashboard.getNumber("IntakeArm/INTAKE_POSITION", INTAKE_POSITION);
+        ARM_SPEED = SmartDashboard.getNumber("IntakeArm/ARM_SPEED", ARM_SPEED);
 
         SmartDashboard.putNumber("IntakeArm/Position", Math.round(getPosition() * 100.0) / 100.0);
         SmartDashboard.putNumber("IntakeArm/Current", Math.round(currentSignal.refresh().getValueAsDouble() * 10.0) / 10.0);

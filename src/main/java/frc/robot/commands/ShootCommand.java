@@ -54,7 +54,12 @@ public class ShootCommand extends Command {
     private static final TreeMap<Double, Double> HOOD_TABLE = new TreeMap<>();
 
     static {
-        // WCP referans degerleri
+        // WCP referans degerleri - SAHADA KALIBRE EDILECEK!
+        // Nasil kalibre edilir:
+        //   1) Robotu hub'a bilinen mesafede koy (ornegin 2m, 3m, 4m...)
+        //   2) Elastic'te Shoot/Distance degerini oku
+        //   3) Manuel RPM dene, hub'a giren RPM'i bul
+        //   4) Asagidaki tabloya yaz
         RPM_TABLE.put(1.32, 2800.0);   //  52 inch
         RPM_TABLE.put(2.06, 3000.0);   //  81 inch
         RPM_TABLE.put(2.90, 3275.0);   // 114 inch
