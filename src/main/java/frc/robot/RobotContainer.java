@@ -139,7 +139,7 @@ public class RobotContainer {
     private void registerNamedCommands() {
         // Atis: Shooter + Hood + Feeder + Hopper + IntakeArm birlikte
         NamedCommands.registerCommand("shoot",
-            new ShootCommand(shooter, hood, feeder, hopper, intakeArm, vision, "limelight")
+            new ShootCommand(shooter, hood, feeder, hopper, vision, "limelight")
                 .withTimeout(3.0));
 
         // Intake: Arm + Roller
@@ -176,7 +176,7 @@ public class RobotContainer {
      *
      *  BUMPER / TRIGGER:
      *    RB              -> AprilTag donus hizalama (basili tut)
-     *    RT              -> ATIS! (Shooter+Feeder+Hood+Hopper+IntakeArm)
+     *    RT              -> ATIS! (Shooter+Feeder+Hood+Hopper)
      *    LB              -> Intake ARM kapat (basili tut = -0.25)
      *    LT              -> Climb yukari (+0.25)
      *
@@ -210,11 +210,11 @@ public class RobotContainer {
         // ==================================================================
         // RT (Sag Trigger) -> ATIS
         //   Mesafe olc -> Shooter RPM + Hood aci ayarla
-        //   Shooter hazir olunca -> Feeder + Hopper + IntakeArm (yarim hiz)
-        //   Birakinca hepsi durur, hood sifira doner
+        //   Shooter + Feeder + Hopper birlikte calisir
+        //   Intake arm'a DOKUNULMAZ, neredeyse orada kalir
         // ==================================================================
         joystick.rightTrigger(0.5).whileTrue(
-            new ShootCommand(shooter, hood, feeder, hopper, intakeArm, vision, "limelight"));
+            new ShootCommand(shooter, hood, feeder, hopper, vision, "limelight"));
 
         // ==================================================================
         // RB -> AprilTag donus hizalama (basili tut)

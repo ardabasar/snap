@@ -10,7 +10,6 @@ import frc.robot.subsystems.ShooterSubsystem;
 import frc.robot.subsystems.HoodSubsystem;
 import frc.robot.subsystems.FeederSubsystem;
 import frc.robot.subsystems.HopperSubsystem;
-import frc.robot.subsystems.IntakeArmSubsystem;
 import frc.robot.subsystems.VisionSubsystem;
 
 /**
@@ -27,8 +26,8 @@ import frc.robot.subsystems.VisionSubsystem;
  *      - Feeder shooter ile AYNI ANDA voltaj mantigiyla calisir
  *   4) Hood servolari (PWM 3,4) hedef aciya git
  *   5) Hopper (CAN 14) -0.25 hizda kayislari calistir
- *   6) Intake arm (CAN 12) kolun degerinin YARISINDA calistir (top itme)
- *   7) Buton birakilinca: Hepsi durur, hood sifira doner
+ *   6) Buton birakilinca: Hepsi durur, hood sifira doner
+ *   NOT: Intake arm (CAN 12) atis sirasinda DOKUNULMAZ, neredeyse orada kalir
  *
  * NOT: Feeder artik shooter hazir olmasini BEKLEMIYOR.
  * Shooter + Feeder ayni voltaj mantigi ile birlikte calisir.
@@ -43,7 +42,6 @@ public class ShootCommand extends Command {
     private final HoodSubsystem hood;
     private final FeederSubsystem feeder;
     private final HopperSubsystem hopper;
-    private final IntakeArmSubsystem intakeArm;
     private final VisionSubsystem vision;
     private final String limelightName;
 
@@ -92,9 +90,6 @@ public class ShootCommand extends Command {
     /** Feeder RPM orani - shooter RPM'inin bu kadari feeder'a verilir */
     private static final double FEEDER_RPM_RATIO = 0.6;
 
-    /** Intake arm atis sirasindaki hiz orani (kolun degerinin yarisi) */
-    private static final double ARM_SHOOT_SPEED_RATIO = 0.5;
-
     // ========================================================================
     // STATE
     // ========================================================================
@@ -112,17 +107,15 @@ public class ShootCommand extends Command {
     // ========================================================================
     public ShootCommand(ShooterSubsystem shooter, HoodSubsystem hood,
                         FeederSubsystem feeder, HopperSubsystem hopper,
-                        IntakeArmSubsystem intakeArm, VisionSubsystem vision,
-                        String limelightName) {
+                        VisionSubsystem vision, String limelightName) {
         this.shooter = shooter;
         this.hood = hood;
         this.feeder = feeder;
         this.hopper = hopper;
-        this.intakeArm = intakeArm;
         this.vision = vision;
         this.limelightName = limelightName;
 
-        addRequirements(shooter, hood, feeder, hopper, intakeArm);
+        addRequirements(shooter, hood, feeder, hopper);
     }
 
     // ========================================================================
@@ -174,9 +167,6 @@ public class ShootCommand extends Command {
             // Hopper: Kayislari calistir (-0.25 hiz)
             hopper.run();
 
-            // Intake arm: Kolun degerinin YARISI kadar calistir (top itme)
-            intakeArm.setSpeed(IntakeArmSubsystem.ARM_SPEED * ARM_SHOOT_SPEED_RATIO);
-
             // State guncelle
             if (shooter.atTargetSpeed()) {
                 state = ShootState.FIRING;
@@ -188,7 +178,6 @@ public class ShootCommand extends Command {
             shooter.stop();
             feeder.stop();
             hopper.stop();
-            intakeArm.stop();
             hood.setDefault();
             state = ShootState.OUT_OF_RANGE;
         }
@@ -212,7 +201,6 @@ public class ShootCommand extends Command {
         shooter.stop();
         feeder.stop();
         hopper.stop();
-        intakeArm.stop();
         hood.setDefault();
         LimelightHelpers.setLEDMode_PipelineControl(limelightName);
 
