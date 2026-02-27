@@ -223,13 +223,21 @@ public class RobotContainer {
             new AlignToAprilTag(drivetrain, "limelight", MaxSpeed, MaxAngularRate));
 
         // ==================================================================
-        // A -> Intake ARM ac (basili tut = +0.25, birak = dur)
+        // A -> Intake ARM ac + Hood servo TEST (basili tut)
+        //   Arm +0.25, servo MAX_POSITION'a gider
+        //   Birakinca arm durur, servo DEFAULT'a doner
         // ==================================================================
         joystick.a().whileTrue(
             Commands.startEnd(
-                () -> intakeArm.setSpeed(IntakeArmSubsystem.ARM_SPEED),   // +0.25
-                () -> intakeArm.stop(),
-                intakeArm));
+                () -> {
+                    intakeArm.setSpeed(IntakeArmSubsystem.ARM_SPEED);   // +0.25
+                    hood.setPosition(HoodSubsystem.MAX_POSITION);       // servo kaldir
+                },
+                () -> {
+                    intakeArm.stop();
+                    hood.setDefault();                                   // servo geri
+                },
+                intakeArm, hood));
 
         // ==================================================================
         // B -> Intake ROLLER calistir (basili tut = top al)
