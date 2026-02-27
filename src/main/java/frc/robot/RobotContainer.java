@@ -223,21 +223,13 @@ public class RobotContainer {
             new AlignToAprilTag(drivetrain, "limelight", MaxSpeed, MaxAngularRate));
 
         // ==================================================================
-        // A -> Intake ARM ac + Hood servo TEST (basili tut)
-        //   Arm +0.25, servo MAX_POSITION'a gider
-        //   Birakinca arm durur, servo DEFAULT'a doner
+        // A -> Intake ARM ac (basili tut = +0.25, birak = dur)
         // ==================================================================
         joystick.a().whileTrue(
             Commands.startEnd(
-                () -> {
-                    intakeArm.setSpeed(IntakeArmSubsystem.ARM_SPEED);   // +0.25
-                    hood.setPosition(HoodSubsystem.MAX_POSITION);       // servo kaldir
-                },
-                () -> {
-                    intakeArm.stop();
-                    hood.setDefault();                                   // servo geri
-                },
-                intakeArm, hood));
+                () -> intakeArm.setSpeed(IntakeArmSubsystem.ARM_SPEED),
+                () -> intakeArm.stop(),
+                intakeArm));
 
         // ==================================================================
         // B -> Intake ROLLER calistir (basili tut = top al)
@@ -280,6 +272,15 @@ public class RobotContainer {
         // ==================================================================
         joystick.povUp().whileTrue(
             new ClimbCommand(climb, ClimbCommand.Direction.DOWN));
+
+        // ==================================================================
+        // Start -> SERVO TEST (basili tut = MAX, birak = DEFAULT)
+        // ==================================================================
+        joystick.start().whileTrue(
+            Commands.startEnd(
+                () -> hood.setPosition(HoodSubsystem.MAX_POSITION),  // 0.77
+                () -> hood.setDefault(),                              // 0.5
+                hood));
 
         // ==================================================================
         // Back -> Field-centric sifirla (heading reset)
