@@ -91,15 +91,13 @@ public class ShootCommand extends Command {
         // 2) ENTERPOLASYON - WCP birebir
         Shot shot = distanceToShotMap.get(distanceToHub);
 
-        // 3) SHOOTER + HOOD ayarla
-        shooter.setRPM(shot.shooterRPM);
+        // 3) SHOOTER full power + HOOD mesafeye gore
+        shooter.setPercentOutput(1.0);  // full hiz
         hood.setPosition(shot.hoodPosition);
 
-        // 4) Shooter hazir olunca feeder + hopper baslar
-        if (shooter.isVelocityWithinTolerance()) {
-            feeder.feed();
-            hopper.run();
-        }
+        // 4) Feeder + hopper aninda baslar (shooter full power)
+        feeder.feed();
+        hopper.run();
 
         // Dashboard
         SmartDashboard.putNumber("Shoot/Distance (inches)", distanceToHub.in(Inches));
