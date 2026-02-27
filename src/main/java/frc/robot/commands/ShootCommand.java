@@ -91,8 +91,8 @@ public class ShootCommand extends Command {
         // 2) ENTERPOLASYON - WCP birebir
         Shot shot = distanceToShotMap.get(distanceToHub);
 
-        // 3) SHOOTER full power + HOOD mesafeye gore
-        shooter.setPercentOutput(1.0);  // full hiz
+        // 3) SHOOTER tam hiz + HOOD mesafeye gore
+        shooter.runFull();  // DutyCycleOut(1.0) = tam hiz
         hood.setPosition(shot.hoodPosition);
 
         // 4) Feeder + hopper aninda baslar (shooter full power)

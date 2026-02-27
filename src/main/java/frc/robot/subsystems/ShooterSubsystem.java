@@ -12,6 +12,7 @@ import com.ctre.phoenix6.configs.MotorOutputConfigs;
 import com.ctre.phoenix6.configs.Slot0Configs;
 import com.ctre.phoenix6.configs.TalonFXConfiguration;
 import com.ctre.phoenix6.configs.VoltageConfigs;
+import com.ctre.phoenix6.controls.DutyCycleOut;
 import com.ctre.phoenix6.controls.VelocityVoltage;
 import com.ctre.phoenix6.controls.VoltageOut;
 import com.ctre.phoenix6.hardware.TalonFX;
@@ -53,6 +54,7 @@ public class ShooterSubsystem extends SubsystemBase {
 
     private final VelocityVoltage velocityRequest = new VelocityVoltage(0).withSlot(0);
     private final VoltageOut voltageRequest = new VoltageOut(0);
+    private final DutyCycleOut dutyCycleRequest = new DutyCycleOut(0);
 
     public ShooterSubsystem() {
         motor1 = new TalonFX(MOTOR_1_CAN_ID, CAN_BUS);
@@ -101,6 +103,13 @@ public class ShooterSubsystem extends SubsystemBase {
     public void setRPM(double rpm) {
         for (final TalonFX motor : motors) {
             motor.setControl(velocityRequest.withVelocity(RPM.of(rpm)));
+        }
+    }
+
+    /** TAM HIZ - DutyCycleOut(1.0) = motorun verebilecegi max guc */
+    public void runFull() {
+        for (final TalonFX motor : motors) {
+            motor.setControl(dutyCycleRequest.withOutput(1.0));
         }
     }
 
